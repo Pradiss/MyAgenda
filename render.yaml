@@ -1,0 +1,29 @@
+# Render Blueprint: cria o backend (API). O site (frontend) fica na Vercel.
+# No Render: New > Blueprint > escolha este repositório.
+# As variáveis marcadas com "sync: false" o Render pede para você preencher na criação.
+
+services:
+  # API (Node + Express): pasta backend/
+  - type: web
+    name: agenda-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: virginia
+    # Instala, gera o Prisma, compila e aplica as migrações pendentes no banco.
+    buildCommand: npm ci --include=dev && npm run build && npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /saude
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL # pooler transaction (porta 6543)
+        sync: false
+      - key: DIRECT_URL # pooler session (porta 5432), para as migrações
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: FRONTEND_URL # endereço do site na Vercel, ex.: https://agenda.vercel.app
+        sync: false

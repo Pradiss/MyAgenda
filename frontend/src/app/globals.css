@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+
+  /* Base neutra (estilo fintech) */
+  --color-fundo: #f2f2ef;
+  --color-superficie: #ffffff;
+  --color-superficie-2: #efefeb;
+  --color-linha: #e4e4df;
+  --color-tinta: #111111;
+  --color-suave: #63635d;
+  --color-escuro: #111111;
+
+  /* Uma cor de destaque + cores de estado */
+  --color-lima: #d4f55a; /* destaque: progresso, hoje, ações principais */
+  --color-ok: #2f7a12;
+  --color-ceu: #2459d6;
+  --color-coral: #d6452c; /* erro / excluir / "agora" */
+  --color-ambar: #b7791f;
+  --color-violeta: #111111;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  background: var(--color-fundo);
+  color: var(--color-tinta);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-feature-settings: "tnum" 1; /* números alinhados (valores e horários) */
+}
+
+/* 16px nos campos: o iPhone não dá zoom ao focar. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+::selection {
+  background: #d4f55a;
+}
+
+/* Botão/realce principal: preto sólido */
+.arco {
+  background: var(--color-tinta);
+}
+
+.brilho {
+  background: var(--color-fundo);
+}
+
+.vidro {
+  background: color-mix(in srgb, var(--color-fundo) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+}
+
+.sem-barra {
+  scrollbar-width: none;
+}
+.sem-barra::-webkit-scrollbar {
+  display: none;
+}
+
+/* Entradas animadas (leves, só CSS) */
+/* Só movimento, sem opacidade 0: o conteúdo aparece já no primeiro quadro (melhor LCP/FCP). */
+@keyframes subir {
+  from { transform: translateY(10px); }
+  to { transform: none; }
+}
+@keyframes folha {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@keyframes aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes crescer {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.entrar {
+  animation: subir 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animar-folha {
+  animation: folha 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (min-width: 768px) {
+  .animar-folha {
+    animation: subir 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+.animar-fundo {
+  animation: aparecer 200ms ease-out;
+}
+.barra-crescer {
+  transform-origin: bottom;
+  animation: crescer 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entrar, .animar-folha, .animar-fundo, .barra-crescer {
+    animation: none;
+  }
+}

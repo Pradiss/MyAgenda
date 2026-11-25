@@ -1,0 +1,42 @@
+// Modelo do banco. Os nomes das colunas seguem o banco (snake_case), que é também o formato da API.
+// Mudou algo aqui? Crie uma migração (veja o README) e rode `npm run db:migrate`.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Compromisso {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Dono do compromisso (auth.users.id do Supabase)
+  user_id       String   @db.Uuid
+  /// trabalho | musico | estetica
+  categoria     String
+  /// ex.: show, ensaio, unhas, reuniao
+  tipo          String
+  titulo        String
+  inicio        DateTime @db.Timestamptz(6)
+  fim           DateTime @db.Timestamptz(6)
+  dia_inteiro   Boolean  @default(false)
+  cliente       String?
+  telefone      String?
+  local         String?
+  valor         Decimal? @db.Decimal(10, 2)
+  /// marcado | confirmado | pago | feito | cancelado
+  status        String   @default("marcado")
+  observacao    String?
+  /// Compromissos repetidos compartilham o mesmo serie_id
+  serie_id      String?  @db.Uuid
+  criado_em     DateTime @default(now()) @db.Timestamptz(6)
+  atualizado_em DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([user_id, categoria, inicio])
+  @@index([serie_id])
+  @@map("compromissos")
+}

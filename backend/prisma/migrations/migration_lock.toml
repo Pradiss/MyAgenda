@@ -1,0 +1,2 @@
+# Não edite à mão: o Prisma usa para saber o tipo de banco.
+provider = "postgresql"
