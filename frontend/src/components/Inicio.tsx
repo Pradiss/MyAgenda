@@ -39,6 +39,7 @@ export default function Inicio({
   nome,
   mesAtual,
   proximos,
+  carregado,
   aoAbrir,
   aoNovo,
   aoMudarStatus,
@@ -50,6 +51,8 @@ export default function Inicio({
   nome: string;
   mesAtual: Compromisso[];
   proximos: Compromisso[];
+  /** Enquanto false, o espaço do "Próximo" fica reservado (a tela não pula quando os dados chegam). */
+  carregado: boolean;
   aoAbrir: (c: Compromisso) => void;
   aoNovo: () => void;
   aoMudarStatus: (c: Compromisso, s: Status) => void;
@@ -169,7 +172,24 @@ export default function Inicio({
       </section>
 
       {/* Próximo compromisso */}
-      {proximo && tipoProximo && (
+      {!carregado && (
+        <section aria-hidden>
+          <div className="mb-2 h-6 w-24 rounded-full bg-superficie-2" />
+          <div className="h-[13.5rem] animate-pulse rounded-[2rem] border border-linha bg-superficie" />
+        </section>
+      )}
+      {carregado && !proximo && (
+        <section className="flex items-center justify-between gap-3 rounded-[2rem] border border-dashed border-linha p-5">
+          <div>
+            <p className="font-extrabold">Nada marcado pela frente</p>
+            <p className="text-sm text-suave">Que tal marcar o próximo?</p>
+          </div>
+          <button onClick={aoNovo} className="arco shrink-0 rounded-full px-4 py-2.5 text-sm font-extrabold text-white">
+            Marcar
+          </button>
+        </section>
+      )}
+      {carregado && proximo && tipoProximo && (
         <section className="entrar" style={{ animationDelay: "180ms" }}>
           <div className="mb-2 flex items-center justify-between px-1">
             <h2 className="font-extrabold">Próximo</h2>

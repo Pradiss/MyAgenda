@@ -74,7 +74,7 @@ export default function Login() {
       <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-8 px-5 py-10">
         <Vitrine />
 
-        <div className="entrar text-center" style={{ animationDelay: "300ms" }}>
+        <div className="text-center">
           <h1 className="text-4xl leading-[1.2] font-extrabold tracking-tight">
             Sua agenda,
             <br />

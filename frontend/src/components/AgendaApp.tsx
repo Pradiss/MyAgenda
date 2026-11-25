@@ -13,7 +13,7 @@ import Relatorio from "./Relatorio";
 import VisaoDia from "./VisaoDia";
 import VisaoMes, { tituloMes } from "./VisaoMes";
 import VisaoProximos from "./VisaoProximos";
-import { api, consulta } from "@/lib/api";
+import { api, consulta, definirTokenInicial } from "@/lib/api";
 import { categoriaDe, estiloCategoria, type CategoriaId } from "@/lib/categorias";
 import { aReceber, doDia } from "@/lib/compromissos";
 import { dinheiro, emSP, formatar, gradeDoMes, hoje, inicioDoDia, isoDoDia, paraISO, rotuloDia, somarDias, somarMeses, type Dia } from "@/lib/datas";
@@ -27,8 +27,17 @@ const periodoDe = (d: Dia) => {
   return { de: g[0], ate: somarDias(g[41], 1) };
 };
 
-export default function AgendaApp({ categoria, email }: { categoria: CategoriaId; email: string }) {
+export default function AgendaApp({
+  categoria,
+  email,
+  token,
+}: {
+  categoria: CategoriaId;
+  email: string;
+  token?: { valor: string; expiraEm: number } | null;
+}) {
   const cat = categoriaDe(categoria)!;
+  definirTokenInicial(token); // antes do primeiro carregamento
   const nome = useMemo(() => {
     const base = email.split("@")[0].split(/[._-]/)[0] || "você";
     return base.charAt(0).toUpperCase() + base.slice(1);
@@ -103,7 +112,8 @@ export default function AgendaApp({ categoria, email }: { categoria: CategoriaId
     let supabase: Cliente | null = null;
     let canal: ReturnType<Cliente["channel"]> | null = null;
     let ativo = true;
-    import("@/lib/supabase/client").then(async ({ criarClienteNavegador }) => {
+    // Espera a tela assentar antes de carregar o Supabase (não disputa com a primeira pintura).
+    const conectar = () => import("@/lib/supabase/client").then(async ({ criarClienteNavegador }) => {
       if (!ativo) return;
       supabase = criarClienteNavegador();
       const { data } = await supabase.auth.getSession();
@@ -120,10 +130,12 @@ export default function AgendaApp({ categoria, email }: { categoria: CategoriaId
         })
         .subscribe();
     });
+    const atraso = setTimeout(conectar, 2500);
     const aoVoltar = () => document.visibilityState === "visible" && agendar();
     document.addEventListener("visibilitychange", aoVoltar);
     return () => {
       clearTimeout(espera);
+      clearTimeout(atraso);
       document.removeEventListener("visibilitychange", aoVoltar);
       ativo = false;
       if (canal && supabase) supabase.removeChannel(canal);
@@ -236,6 +248,7 @@ export default function AgendaApp({ categoria, email }: { categoria: CategoriaId
               nome={nome}
               mesAtual={mesAtual}
               proximos={proximos}
+              carregado={carregado}
               aoAbrir={setDetalhe}
               aoNovo={novo}
               aoMudarStatus={mudarStatus}

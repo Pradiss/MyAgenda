@@ -25,8 +25,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={manrope.variable}>
-      <body className="min-h-dvh font-sans antialiased">
+    // suppressHydrationWarning: extensões do navegador (LanguageTool, ColorZilla, gerenciadores de
+    // senha…) colocam atributos em <html>/<body> antes do React carregar. Vale só para estas duas tags.
+    <html lang="pt-BR" className={manrope.variable} suppressHydrationWarning>
+      <body className="min-h-dvh font-sans antialiased" suppressHydrationWarning>
         <AcordarServidor />
         {children}
       </body>

@@ -1,14 +1,27 @@
 
 let saindo = false;
 
+/** Token entregue pelo servidor junto com a página (evita carregar o Supabase antes dos dados). */
+let tokenInicial: { valor: string; expira: number } | null = null;
+
+export function definirTokenInicial(t: { valor: string; expiraEm: number } | null | undefined) {
+  if (t?.valor) tokenInicial = { valor: t.valor, expira: t.expiraEm * 1000 };
+}
+
+async function tokenAtual(): Promise<string | undefined> {
+  if (tokenInicial && tokenInicial.expira - Date.now() > 60_000) return tokenInicial.valor;
+  tokenInicial = null;
+  // Perto de expirar (ou sem token do servidor): o Supabase renova. Carregado sob demanda.
+  const { criarClienteNavegador } = await import("./supabase/client");
+  const { data } = await criarClienteNavegador().auth.getSession();
+  return data.session?.access_token;
+}
+
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
 
 /** Chama a API do backend com o token do usuário logado. Erros viram `Error` com mensagem em português. */
 export async function api<T = unknown>(caminho: string, opcoes: { metodo?: string; corpo?: unknown } = {}): Promise<T> {
-  // Carregado sob demanda: não pesa na primeira pintura da tela.
-  const { criarClienteNavegador } = await import("./supabase/client");
-  const { data } = await criarClienteNavegador().auth.getSession();
-  const token = data.session?.access_token;
+  const token = await tokenAtual();
 
   let resposta: Response;
   try {
@@ -27,6 +40,8 @@ export async function api<T = unknown>(caminho: string, opcoes: { metodo?: strin
   // Sessão recusada pela API: sai de verdade (senão o site manda de volta para "/" e entra em loop).
   if (resposta.status === 401 && typeof window !== "undefined" && !saindo) {
     saindo = true;
+    tokenInicial = null;
+    const { criarClienteNavegador } = await import("./supabase/client");
     await criarClienteNavegador().auth.signOut().catch(() => {});
     window.location.href = "/login";
   }
