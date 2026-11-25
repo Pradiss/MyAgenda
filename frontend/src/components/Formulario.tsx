@@ -215,7 +215,6 @@ export default function Formulario({
         <input
           id="titulo"
           required
-          autoFocus={!editando}
           aria-label={cat.titulo.rotulo}
           value={titulo}
           onChange={(e) => {
