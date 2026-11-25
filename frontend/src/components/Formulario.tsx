@@ -83,7 +83,6 @@ export default function Formulario({
   const [valor, setValor] = useState(inicial.valor == null ? "" : Number(inicial.valor).toFixed(2).replace(".", ","));
   const [status, setStatus] = useState<Status>(inicial.status);
   const [observacao, setObservacao] = useState(inicial.observacao ?? "");
-  const [maisCampos, setMaisCampos] = useState(Boolean(inicial.observacao));
   const [repeticao, setRepeticao] = useState<Repeticao>("nao");
   const [vezes, setVezes] = useState(4);
   const [contatos, setContatos] = useState<Contato[]>([]);
@@ -188,53 +187,54 @@ export default function Formulario({
     aoSalvar();
   }
 
+  const temDetalhes = Boolean(cliente || telefone || local || observacao);
+  const [detalhes, setDetalhes] = useState(editando && temDetalhes);
+  const mini = "w-full rounded-xl border border-linha bg-fundo px-3 py-2.5 font-bold outline-none focus:border-tinta";
+
   return (
-    <Folha titulo={editando ? "Editar" : `Novo · ${cat.nome}`} aoFechar={aoFechar} estilo={estiloCor(tipoDe(cat, tipo).cor)}>
-      <form onSubmit={salvar} className="flex flex-col gap-5 pt-1">
-        {/* 1. O quê */}
-        <div>
-          <span className={rotulo}>Tipo</span>
-          <div className="flex flex-wrap gap-2">
-            {cat.tipos.map((t) => (
-              <button
-                type="button"
-                key={t.id}
-                onClick={() => setTipo(t.id)}
-                style={estiloCor(t.cor)}
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 font-extrabold transition active:scale-95 ${
-                  t.id === tipo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"
-                }`}
-              >
-                <span className="size-2.5 rounded-full bg-(--c)" />
-                {t.nome}
-              </button>
-            ))}
-          </div>
+    <Folha titulo={editando ? "Editar" : "Marcar"} aoFechar={aoFechar} estilo={estiloCor(tipoDe(cat, tipo).cor)}>
+      <form onSubmit={salvar} className="flex flex-col gap-3.5 pt-1">
+        {/* Tipo: uma linha que rola para o lado */}
+        <div className="sem-barra -mx-5 flex gap-2 overflow-x-auto px-5">
+          {cat.tipos.map((t) => (
+            <button
+              type="button"
+              key={t.id}
+              onClick={() => setTipo(t.id)}
+              style={estiloCor(t.cor)}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-extrabold transition active:scale-95 ${
+                t.id === tipo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"
+              }`}
+            >
+              <span className="size-2 rounded-full bg-(--c)" />
+              {t.nome}
+            </button>
+          ))}
         </div>
 
-        <div>
-          <label className={rotulo} htmlFor="titulo">{cat.titulo.rotulo}</label>
-          <input
-            id="titulo"
-            required
-            autoFocus={!editando}
-            value={titulo}
-            onChange={(e) => {
-              setTitulo(e.target.value);
-              if (nomeEhTitulo) preencherTelefone(e.target.value);
-            }}
-            placeholder={cat.titulo.exemplo}
-            list={nomeEhTitulo ? "contatos" : undefined}
-            autoComplete="off"
-            className={campo}
-          />
-        </div>
+        <input
+          id="titulo"
+          required
+          autoFocus={!editando}
+          aria-label={cat.titulo.rotulo}
+          value={titulo}
+          onChange={(e) => {
+            setTitulo(e.target.value);
+            if (nomeEhTitulo) preencherTelefone(e.target.value);
+          }}
+          placeholder={cat.titulo.exemplo}
+          list={nomeEhTitulo ? "contatos" : undefined}
+          autoComplete="off"
+          className="w-full rounded-2xl border border-linha bg-fundo px-4 py-3 text-lg font-extrabold outline-none placeholder:font-semibold placeholder:text-suave/70 focus:border-tinta"
+        />
 
-        {/* 2. Quando */}
-        <div className="flex flex-col gap-3 rounded-3xl bg-superficie-2 p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => mudarHorario(() => setDia(h))} className={chip(dia === h)}>Hoje</button>
-            <button type="button" onClick={() => mudarHorario(() => setDia(somarDias(h, 1)))} className={chip(dia === somarDias(h, 1))}>
+        {/* Quando */}
+        <div className="flex flex-col gap-2.5 rounded-2xl bg-superficie-2 p-3">
+          <div className="flex items-center gap-1.5">
+            <button type="button" onClick={() => mudarHorario(() => setDia(h))} className={`${chip(dia === h)} px-3! py-1.5! text-sm`}>
+              Hoje
+            </button>
+            <button type="button" onClick={() => mudarHorario(() => setDia(somarDias(h, 1)))} className={`${chip(dia === somarDias(h, 1))} px-3! py-1.5! text-sm`}>
               Amanhã
             </button>
             <input
@@ -243,44 +243,135 @@ export default function Formulario({
               aria-label="Data"
               value={dia}
               onChange={(e) => e.target.value && mudarHorario(() => setDia(e.target.value))}
-              className="min-w-0 flex-1 rounded-full border border-linha bg-fundo px-3 py-1.5 font-bold outline-none focus:border-tinta"
+              className="min-w-0 flex-1 rounded-full border border-linha bg-fundo px-3 py-1.5 text-sm font-bold outline-none focus:border-tinta"
             />
           </div>
-          <p className="-mt-1 text-sm font-extrabold text-suave">{rotuloDia(dia)}</p>
 
           {!diaInteiro && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={rotulo} htmlFor="ini">Começa</label>
-                  <input id="ini" type="time" required value={horaIni} onChange={(e) => e.target.value && mudarInicio(e.target.value)} className={campo} />
-                </div>
-                <div>
-                  <label className={rotulo} htmlFor="fim">Termina</label>
-                  <input id="fim" type="time" required value={horaFim} onChange={(e) => e.target.value && mudarHorario(() => setHoraFim(e.target.value))} className={campo} />
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {DURACOES.map((d) => (
-                  <button
-                    type="button"
-                    key={d.min}
-                    onClick={() => mudarHorario(() => setHoraFim(deMin(paraMin(horaIni) + d.min)))}
-                    className={`${chip(duracao === d.min)} px-3! py-1! text-sm`}
-                  >
-                    {d.rotulo}
-                  </button>
-                ))}
-              </div>
-              {viraODia && <p className="text-sm font-bold text-suave">Termina no dia seguinte.</p>}
-            </>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 rounded-xl border border-linha bg-fundo pl-3">
+                <span className="text-xs font-bold text-suave">De</span>
+                <input type="time" required aria-label="Começa" value={horaIni} onChange={(e) => e.target.value && mudarInicio(e.target.value)} className="min-w-0 flex-1 bg-transparent py-2.5 pr-2 font-extrabold outline-none" />
+              </label>
+              <label className="flex items-center gap-2 rounded-xl border border-linha bg-fundo pl-3">
+                <span className="text-xs font-bold text-suave">até</span>
+                <input type="time" required aria-label="Termina" value={horaFim} onChange={(e) => e.target.value && mudarHorario(() => setHoraFim(e.target.value))} className="min-w-0 flex-1 bg-transparent py-2.5 pr-2 font-extrabold outline-none" />
+              </label>
+            </div>
           )}
 
-          <label className="flex items-center justify-between font-extrabold">
-            Dia inteiro
-            <input type="checkbox" checked={diaInteiro} onChange={(e) => mudarHorario(() => setDiaInteiro(e.target.checked))} className="size-6 accent-tinta" />
-          </label>
+          <div className="sem-barra -mx-3 flex items-center gap-1.5 overflow-x-auto px-3">
+            {!diaInteiro &&
+              DURACOES.map((d) => (
+                <button
+                  type="button"
+                  key={d.min}
+                  onClick={() => mudarHorario(() => setHoraFim(deMin(paraMin(horaIni) + d.min)))}
+                  className={`${chip(duracao === d.min)} shrink-0 px-3! py-1! text-xs`}
+                >
+                  {d.rotulo}
+                </button>
+              ))}
+            <button type="button" onClick={() => mudarHorario(() => setDiaInteiro(!diaInteiro))} className={`${chip(diaInteiro)} shrink-0 px-3! py-1! text-xs`}>
+              Dia todo
+            </button>
+          </div>
+          {viraODia && <p className="text-xs font-bold text-suave">Termina no dia seguinte.</p>}
         </div>
+
+        {cat.valor && (
+          <label className="flex items-center gap-3 rounded-2xl border border-linha bg-fundo px-4">
+            <span className="text-sm font-bold text-suave">{cat.valor.replace(" (R$)", "")}</span>
+            <span className="font-extrabold text-suave">R$</span>
+            <input
+              id="valor"
+              inputMode="decimal"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              placeholder="0,00"
+              className="min-w-0 flex-1 bg-transparent py-3 text-right text-lg font-extrabold outline-none"
+            />
+          </label>
+        )}
+
+        {/* Mais detalhes (fechado por padrão: a tela fica limpa) */}
+        <button
+          type="button"
+          onClick={() => setDetalhes(!detalhes)}
+          aria-expanded={detalhes}
+          className="flex items-center justify-between rounded-2xl px-1 py-1 text-sm font-extrabold text-suave hover:text-tinta"
+        >
+          <span>{detalhes ? "Menos detalhes" : `Mais detalhes${!editando ? " · repetir" : ""}`}</span>
+          <span className={`transition ${detalhes ? "rotate-180" : ""}`}>▾</span>
+        </button>
+
+        {detalhes && (
+          <div className="entrar flex flex-col gap-2.5">
+            {(cat.cliente || cat.telefone) && (
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {cat.cliente && (
+                  <input
+                    id="cliente"
+                    aria-label={cat.cliente}
+                    placeholder={cat.cliente}
+                    value={cliente}
+                    list="contatos"
+                    autoComplete="off"
+                    onChange={(e) => {
+                      setCliente(e.target.value);
+                      preencherTelefone(e.target.value);
+                    }}
+                    className={mini}
+                  />
+                )}
+                {cat.telefone && (
+                  <input id="tel" type="tel" inputMode="tel" aria-label="WhatsApp" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="WhatsApp com DDD" className={mini} />
+                )}
+              </div>
+            )}
+            {cat.local && <input id="local" aria-label={cat.local} placeholder={cat.local} value={local} onChange={(e) => setLocal(e.target.value)} className={mini} />}
+
+            {!editando && (
+              <div className="flex flex-col gap-2">
+                <div className="sem-barra -mx-5 flex gap-1.5 overflow-x-auto px-5">
+                  {REPETICOES.map((r) => (
+                    <button type="button" key={r.id} onClick={() => setRepeticao(r.id)} className={`${chip(repeticao === r.id)} shrink-0 px-3! py-1.5! text-xs`}>
+                      {r.rotulo}
+                    </button>
+                  ))}
+                </div>
+                {repeticao !== "nao" && (
+                  <div className="flex items-center gap-3 rounded-xl bg-superficie-2 px-2 py-1.5">
+                    <button type="button" onClick={() => setVezes(Math.max(2, vezes - 1))} aria-label="Menos" className="grid size-8 place-items-center rounded-full bg-fundo text-lg font-extrabold">−</button>
+                    <span className="flex-1 text-center text-sm font-extrabold">
+                      {vezes} vezes, até {formatar(inicioDoDia(diasDaRepeticao(dia, repeticao, vezes).at(-1)!), "d 'de' MMM")}
+                    </span>
+                    <button type="button" onClick={() => setVezes(Math.min(52, vezes + 1))} aria-label="Mais" className="grid size-8 place-items-center rounded-full bg-fundo text-lg font-extrabold">+</button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <textarea id="obs" rows={2} aria-label="Observação" placeholder="Observação" value={observacao} onChange={(e) => setObservacao(e.target.value)} className={mini} />
+          </div>
+        )}
+
+        {editando && (
+          <div className="sem-barra -mx-5 flex gap-1.5 overflow-x-auto px-5">
+            {cat.status.map((s) => (
+              <button
+                type="button"
+                key={s}
+                onClick={() => setStatus(s)}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-extrabold transition ${ESTILO_STATUS[s]} ${
+                  status === s ? "ring-2 ring-current ring-offset-2 ring-offset-superficie" : "opacity-55"
+                }`}
+              >
+                {ROTULO_STATUS[s]}
+              </button>
+            ))}
+          </div>
+        )}
 
         <datalist id="contatos">
           {contatos.map((c) => (
@@ -288,117 +379,22 @@ export default function Formulario({
           ))}
         </datalist>
 
-        {/* Repetir (só ao criar) */}
-        {!editando && (
-          <div>
-            <span className={rotulo}>Repetir</span>
-            <div className="flex flex-wrap gap-2">
-              {REPETICOES.map((r) => (
-                <button type="button" key={r.id} onClick={() => setRepeticao(r.id)} className={`${chip(repeticao === r.id)} px-3! py-1.5! text-sm`}>
-                  {r.rotulo}
-                </button>
-              ))}
-            </div>
-            {repeticao !== "nao" && (
-              <div className="mt-2 flex items-center gap-3 rounded-2xl bg-superficie-2 px-3 py-2">
-                <button type="button" onClick={() => setVezes(Math.max(2, vezes - 1))} aria-label="Menos" className="grid size-9 place-items-center rounded-full bg-fundo text-xl font-extrabold">−</button>
-                <span className="flex-1 text-center font-extrabold">
-                  {vezes} vezes, até {formatar(inicioDoDia(diasDaRepeticao(dia, repeticao, vezes).at(-1)!), "d 'de' MMM")}
-                </span>
-                <button type="button" onClick={() => setVezes(Math.min(52, vezes + 1))} aria-label="Mais" className="grid size-9 place-items-center rounded-full bg-fundo text-xl font-extrabold">+</button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 3. Detalhes da agenda */}
-        {(cat.cliente || cat.telefone || cat.local || cat.valor) && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {cat.cliente && (
-              <div>
-                <label className={rotulo} htmlFor="cliente">{cat.cliente}</label>
-                <input
-                  id="cliente"
-                  value={cliente}
-                  list="contatos"
-                  autoComplete="off"
-                  onChange={(e) => {
-                    setCliente(e.target.value);
-                    preencherTelefone(e.target.value);
-                  }}
-                  className={campo}
-                />
-              </div>
-            )}
-            {cat.telefone && (
-              <div>
-                <label className={rotulo} htmlFor="tel">WhatsApp (com DDD)</label>
-                <input id="tel" type="tel" inputMode="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="11 98765-4321" className={campo} />
-              </div>
-            )}
-            {cat.local && (
-              <div>
-                <label className={rotulo} htmlFor="local">{cat.local}</label>
-                <input id="local" value={local} onChange={(e) => setLocal(e.target.value)} className={campo} />
-              </div>
-            )}
-            {cat.valor && (
-              <div>
-                <label className={rotulo} htmlFor="valor">{cat.valor}</label>
-                <input id="valor" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" className={campo} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {editando && (
-          <div>
-            <span className={rotulo}>Status</span>
-            <div className="flex flex-wrap gap-2">
-              {cat.status.map((s) => (
-                <button
-                  type="button"
-                  key={s}
-                  onClick={() => setStatus(s)}
-                  className={`rounded-full px-4 py-2 font-extrabold transition ${ESTILO_STATUS[s]} ${
-                    status === s ? "ring-2 ring-current ring-offset-2 ring-offset-superficie" : "opacity-55"
-                  }`}
-                >
-                  {ROTULO_STATUS[s]}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {maisCampos ? (
-          <div>
-            <label className={rotulo} htmlFor="obs">Observação</label>
-            <textarea id="obs" rows={3} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={campo} />
-          </div>
-        ) : (
-          <button type="button" onClick={() => setMaisCampos(true)} className="self-start font-extrabold text-suave hover:text-tinta">
-            + Adicionar observação
-          </button>
-        )}
-
         {conflitos && conflitos.length > 0 && (
-          <div className="rounded-2xl border border-ambar/50 bg-ambar/10 p-3 text-ambar">
-            <p className="font-extrabold">⚠️ Esse horário bate com:</p>
-            <ul className="mt-1 text-sm font-bold">
+          <div className="rounded-2xl border border-ambar/50 bg-ambar/10 p-3 text-sm">
+            <p className="font-extrabold text-ambar">⚠️ Bate com:</p>
+            <ul className="mt-0.5 font-bold">
               {conflitos.map((c) => (
                 <li key={c.id}>
                   {CATEGORIAS.find((x) => x.id === c.categoria)?.emoji} {c.titulo}, {rotuloDia(diaDe(c.inicio)).toLowerCase()} {faixaHorario(c)}
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-sm">Se estiver certo, é só salvar de novo.</p>
           </div>
         )}
 
         {erro && <p className="rounded-xl bg-coral/12 px-3 py-2 text-sm font-bold text-coral">{erro}</p>}
 
-        <div className="sticky bottom-0 -mx-5 flex gap-2 bg-superficie px-5 pt-3 pb-1">
+        <div className="sticky bottom-0 -mx-5 flex gap-2 bg-superficie px-5 pt-2 pb-1">
           <button type="button" onClick={aoFechar} className="rounded-2xl bg-superficie-2 px-5 py-3.5 font-extrabold text-suave">
             Cancelar
           </button>

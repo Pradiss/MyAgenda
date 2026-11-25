@@ -11,7 +11,7 @@ import Inicio from "./Inicio";
 import Perfil from "./Perfil";
 import Relatorio from "./Relatorio";
 import VisaoDia from "./VisaoDia";
-import VisaoMes, { tituloMes } from "./VisaoMes";
+import VisaoMes from "./VisaoMes";
 import VisaoProximos from "./VisaoProximos";
 import { api, consulta, definirTokenInicial } from "@/lib/api";
 import { categoriaDe, estiloCategoria, type CategoriaId } from "@/lib/categorias";
@@ -234,11 +234,17 @@ export default function AgendaApp({
 
   return (
     <div style={estiloCategoria(cat)} className="brilho min-h-dvh">
-      <div className="mx-auto max-w-2xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-32" onTouchStart={aoTocar} onTouchEnd={aoSoltar}>
+      <div className="mx-auto max-w-xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-28" onTouchStart={aoTocar} onTouchEnd={aoSoltar}>
         {erro && (
-          <p className="entrar mb-4 rounded-2xl bg-coral/12 px-4 py-3 text-sm font-bold text-coral" onClick={() => setErro("")}>
-            {erro}
-          </p>
+          <button
+            onClick={() => {
+              setErro("");
+              carregar();
+            }}
+            className="mb-3 w-full rounded-2xl bg-coral/12 px-4 py-3 text-left text-sm font-bold text-coral"
+          >
+            {erro} <span className="underline">Tocar para tentar de novo</span>
+          </button>
         )}
 
         <div className={carregado ? "" : "animate-pulse"}>
@@ -254,23 +260,18 @@ export default function AgendaApp({
               aoMudarStatus={mudarStatus}
               aoBuscar={() => setBuscando(true)}
               aoRelatorio={() => setRelatorio(true)}
-              aoAgenda={() => {
-                setDia(hoje());
-                setModo("dia");
-                mudarAba("agenda");
-              }}
             />
           )}
 
           {aba === "agenda" && (
-            <div className="flex flex-col gap-4">
-              <header className="entrar flex items-end justify-between gap-3">
+            <div className="flex flex-col gap-3">
+              <header className="flex items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-suave first-letter:uppercase">
-                    {modo === "dia" ? formatar(inicioDoDia(dia), "d 'de' MMMM 'de' yyyy") : "toque num dia para ver"}
+                  <p className="truncate text-xs font-semibold text-suave first-letter:uppercase">
+                    {modo === "dia" ? formatar(inicioDoDia(dia), "d 'de' MMMM 'de' yyyy") : `${dia.slice(0, 4)} · toque num dia`}
                   </p>
-                  <h1 className="truncate text-[28px] leading-tight font-extrabold tracking-tight first-letter:uppercase">
-                    {modo === "dia" ? rotuloDia(dia, "EEEE") : tituloMes(dia)}
+                  <h1 className="truncate text-2xl leading-tight font-extrabold tracking-tight first-letter:uppercase">
+                    {modo === "dia" ? rotuloDia(dia, "EEEE") : formatar(inicioDoDia(dia), "MMMM")}
                   </h1>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -291,19 +292,19 @@ export default function AgendaApp({
               </header>
 
               <div className="entrar flex items-center gap-2" style={{ animationDelay: "40ms" }}>
-                <div className="grid flex-1 grid-cols-2 rounded-full border border-linha bg-superficie p-1">
+                <div className="grid flex-1 grid-cols-2 rounded-full border border-linha bg-superficie p-0.5">
                   {(["dia", "mes"] as Modo[]).map((m) => (
                     <button
                       key={m}
                       onClick={() => setModo(m)}
-                      className={`rounded-full py-2 text-sm font-extrabold transition ${modo === m ? "bg-tinta text-white" : "text-suave hover:text-tinta"}`}
+                      className={`rounded-full py-1.5 text-sm font-extrabold transition ${modo === m ? "bg-tinta text-white" : "text-suave hover:text-tinta"}`}
                     >
                       {m === "dia" ? "Dia" : "Mês"}
                     </button>
                   ))}
                 </div>
                 {dia !== hoje() && (
-                  <button onClick={() => setDia(hoje())} className="h-10 rounded-full bg-lima px-4 text-sm font-extrabold text-escuro">
+                  <button onClick={() => setDia(hoje())} className="h-9 rounded-full bg-lima px-4 text-sm font-extrabold text-escuro">
                     Hoje
                   </button>
                 )}
@@ -315,7 +316,7 @@ export default function AgendaApp({
                     <FaixaSemana dia={dia} cat={cat} compromissos={periodo} aoEscolher={setDia} />
                   </div>
                   {doDiaAtivo.length > 0 && (
-                    <div className="entrar flex items-center justify-between rounded-2xl border border-linha bg-superficie px-4 py-3 text-sm" style={{ animationDelay: "100ms" }}>
+                    <div className="flex items-center justify-between px-1 text-xs">
                       <span className="font-bold">
                         {doDiaAtivo.length} {doDiaAtivo.length > 1 ? "compromissos" : "compromisso"}
                       </span>
@@ -344,8 +345,8 @@ export default function AgendaApp({
             <div className="flex flex-col gap-5">
               <header className="entrar flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-suave">o que vem pela frente</p>
-                  <h1 className="text-[28px] leading-tight font-extrabold tracking-tight">Próximos</h1>
+                  <p className="text-xs font-semibold text-suave">o que vem pela frente</p>
+                  <h1 className="text-2xl leading-tight font-extrabold tracking-tight">Próximos</h1>
                 </div>
                 <button onClick={() => setBuscando(true)} aria-label="Buscar" className={botaoRedondo}>
                   <Search size={18} />
@@ -358,8 +359,8 @@ export default function AgendaApp({
           {aba === "perfil" && (
             <div className="flex flex-col gap-5">
               <header className="entrar">
-                <p className="text-sm font-semibold text-suave">conta e preferências</p>
-                <h1 className="text-[28px] leading-tight font-extrabold tracking-tight">Perfil</h1>
+                <p className="text-xs font-semibold text-suave">conta e preferências</p>
+                <h1 className="text-2xl leading-tight font-extrabold tracking-tight">Perfil</h1>
               </header>
               <Perfil cat={cat} email={email} />
             </div>

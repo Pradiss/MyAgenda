@@ -7,9 +7,13 @@ const app = express();
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // atrás do proxy do Render
+// Em desenvolvimento, aceita também localhost/127.0.0.1 e IPs da rede de casa (testar no celular).
+const REDE_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/;
+const emProducao = process.env.NODE_ENV === "production";
+
 app.use(
   cors({
-    origin: (origem, ok) => ok(null, !origem || config.origens.includes(origem)),
+    origin: (origem, ok) => ok(null, !origem || config.origens.includes(origem) || (!emProducao && REDE_LOCAL.test(origem))),
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Authorization", "Content-Type"],
     maxAge: 86400,

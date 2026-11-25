@@ -49,7 +49,7 @@ export default function VisaoMes({
               <button
                 key={d}
                 onClick={() => aoEscolher(d)}
-                className={`flex aspect-square flex-col items-center gap-1 rounded-2xl pt-1.5 transition ${
+                className={`flex h-12 flex-col items-center gap-0.5 rounded-2xl pt-1 transition ${
                   escolhido ? "bg-tinta text-white shadow-lg shadow-black/15" : foraDoMes ? "opacity-30" : "hover:bg-superficie-2"
                 }`}
               >

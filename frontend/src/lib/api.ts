@@ -17,7 +17,26 @@ async function tokenAtual(): Promise<string | undefined> {
   return data.session?.access_token;
 }
 
-const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
+const CONFIGURADA = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/$/, "");
+const LOCAIS = ["localhost", "127.0.0.1"];
+
+/**
+ * Endereço da API. Em desenvolvimento a API é "localhost:4000"; se o site foi aberto por outro
+ * endereço (ex.: o IP do Mac, no celular), usa esse mesmo endereço para achar a API.
+ */
+export function urlDaApi(): string {
+  if (typeof window === "undefined") return CONFIGURADA;
+  try {
+    const u = new URL(CONFIGURADA);
+    if (LOCAIS.includes(u.hostname) && !LOCAIS.includes(window.location.hostname)) {
+      u.hostname = window.location.hostname;
+      return u.toString().replace(/\/$/, "");
+    }
+  } catch {
+    // URL inválida: usa como está
+  }
+  return CONFIGURADA;
+}
 
 /** Chama a API do backend com o token do usuário logado. Erros viram `Error` com mensagem em português. */
 export async function api<T = unknown>(caminho: string, opcoes: { metodo?: string; corpo?: unknown } = {}): Promise<T> {
@@ -25,7 +44,7 @@ export async function api<T = unknown>(caminho: string, opcoes: { metodo?: strin
 
   let resposta: Response;
   try {
-    resposta = await fetch(`${BASE}${caminho}`, {
+    resposta = await fetch(`${urlDaApi()}${caminho}`, {
       method: opcoes.metodo ?? "GET",
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

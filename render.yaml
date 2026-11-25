@@ -17,6 +17,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_ENV # em produção a API só aceita o FRONTEND_URL
+        value: production
       - key: DATABASE_URL # pooler transaction (porta 6543)
         sync: false
       - key: DIRECT_URL # pooler session (porta 5432), para as migrações

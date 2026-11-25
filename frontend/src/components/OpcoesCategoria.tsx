@@ -15,24 +15,24 @@ export default function OpcoesCategoria({ valor, aoEscolher }: { valor: Categori
             key={c.id}
             onClick={() => aoEscolher(c.id)}
             style={{ animationDelay: `${80 + i * 70}ms` }}
-            className={`entrar relative overflow-hidden rounded-[1.75rem] border p-5 text-left transition active:scale-[0.98] ${
+            className={`entrar relative overflow-hidden rounded-3xl border p-4 text-left transition active:scale-[0.98] ${
               escolhida ? "border-tinta bg-tinta text-white shadow-xl shadow-black/15" : "border-linha bg-superficie hover:border-tinta/25"
             }`}
           >
-            <div className="flex items-start gap-4">
-              <span className={`grid size-14 shrink-0 place-items-center rounded-2xl text-3xl ${escolhida ? "bg-white/10" : "bg-superficie-2"}`}>
+            <div className="flex items-start gap-3">
+              <span className={`grid size-12 shrink-0 place-items-center rounded-2xl text-2xl ${escolhida ? "bg-white/10" : "bg-superficie-2"}`}>
                 {c.emoji}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-xl font-extrabold tracking-tight">{c.nome}</span>
+                <span className="block text-lg leading-tight font-extrabold tracking-tight">{c.nome}</span>
                 <span className={`block text-sm font-semibold ${escolhida ? "text-white/60" : "text-suave"}`}>{c.descricao}</span>
-                <span className="mt-3 flex flex-wrap gap-1.5">
+                <span className="mt-2 flex flex-wrap gap-1">
                   {c.tipos
                     .filter((t) => t.id !== "outro")
                     .map((t) => (
                       <span
                         key={t.id}
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           escolhida ? "bg-white/10 text-white/85" : "bg-superficie-2 text-suave"
                         }`}
                       >
