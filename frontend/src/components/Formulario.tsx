@@ -432,10 +432,22 @@ export default function Formulario({
           type="button"
           onClick={() => setDetalhes(!detalhes)}
           aria-expanded={detalhes}
-          className="flex items-center justify-between rounded-2xl px-1 py-1 text-sm font-extrabold text-suave hover:text-tinta"
+          className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.99] ${
+            detalhes ? "border-tinta bg-tinta text-white" : "border-lima bg-lima/25 hover:bg-lima/40"
+          }`}
         >
-          <span>{detalhes ? "Menos detalhes" : `Mais detalhes${!editando ? " · repetir" : ""}`}</span>
-          <span className={`transition ${detalhes ? "rotate-180" : ""}`}>▾</span>
+          <span className={`grid size-8 shrink-0 place-items-center rounded-full text-lg font-extrabold ${detalhes ? "bg-white/15" : "bg-lima text-escuro"}`}>
+            {detalhes ? "−" : "+"}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-extrabold">{detalhes ? "Menos detalhes" : "Mais detalhes"}</span>
+            <span className={`block truncate text-xs font-semibold ${detalhes ? "text-white/60" : "text-suave"}`}>
+              {[cat.cliente ? cat.cliente.toLowerCase() : null, cat.telefone && "WhatsApp", cat.local && "local", !editando && "repetir", "observação"]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </span>
+          <span className={`shrink-0 transition ${detalhes ? "rotate-180" : ""}`}>▾</span>
         </button>
 
         {detalhes && (

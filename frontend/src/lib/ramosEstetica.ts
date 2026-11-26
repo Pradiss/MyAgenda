@@ -20,9 +20,10 @@ export const RAMOS_ESTETICA: Ramo[] = [
   ramo("cilios", "Cílios", "👁️", "uva", [
     ["fio_a_fio", "Fio a fio", 120],
     ["volume_brasileiro", "Volume brasileiro", 150],
+    ["volume_egipcio", "Volume egípcio", 150],
     ["volume_russo", "Volume russo", 150],
-    ["hibrido", "Volume híbrido", 150],
-    ["mega_volume", "Mega volume", 180],
+    ["volume_luxo", "Volume luxo", 180],
+    ["fox_eyes", "Fox eyes", 150],
     ["manutencao", "Manutenção de cílios", 90],
     ["lash_lifting", "Lash lifting", 60],
     ["tintura", "Tintura de cílios", 30],
@@ -33,7 +34,6 @@ export const RAMOS_ESTETICA: Ramo[] = [
     ["henna", "Design com henna", 45],
     ["tintura", "Design com tintura", 45],
     ["brow_lamination", "Brow lamination", 60],
-    ["micro_fio_a_fio", "Micropigmentação fio a fio", 120],
     ["nanoblading", "Nanoblading", 120],
     ["shadow", "Shadow / microshading", 120],
     ["retoque", "Retoque de sobrancelha", 60],
@@ -46,6 +46,7 @@ export const RAMOS_ESTETICA: Ramo[] = [
     ["esmaltacao_gel", "Esmaltação em gel", 60],
     ["alongamento_gel", "Alongamento em gel", 150],
     ["fibra", "Fibra de vidro", 150],
+    ["mold_f1", "Mold F1", 120],
     ["polygel", "Polygel", 120],
     ["banho_gel", "Banho de gel", 90],
     ["manutencao", "Manutenção de unhas", 90],
@@ -109,8 +110,14 @@ export const RAMOS_ESTETICA: Ramo[] = [
   ]),
 ];
 
-/** Serviços antigos (antes dos ramos): continuam válidos para compromissos já salvos. */
+/**
+ * Serviços que saíram da lista: não aparecem mais para marcar, mas continuam válidos
+ * (e com nome certo) nos compromissos já salvos.
+ */
 export const SERVICOS_ANTIGOS: Servico[] = [
+  { id: "cilios_hibrido", nome: "Volume híbrido", cor: "uva" },
+  { id: "cilios_mega_volume", nome: "Mega volume", cor: "uva" },
+  { id: "sobrancelha_micro_fio_a_fio", nome: "Micropigmentação fio a fio", cor: "tangerina" },
   { id: "cabelo", nome: "Cabelo", cor: "chiclete" },
   { id: "unhas", nome: "Unhas", cor: "morango" },
   { id: "sobrancelha", nome: "Sobrancelha", cor: "tangerina" },
