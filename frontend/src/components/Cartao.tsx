@@ -45,12 +45,15 @@ export default function Cartao({
   aoAbrir,
   aoMudarStatus,
   passou = false,
+  destaque,
 }: {
   c: Compromisso;
   cat: Categoria;
   aoAbrir: (c: Compromisso) => void;
   aoMudarStatus: (c: Compromisso, s: Status) => void;
   passou?: boolean;
+  /** Ex.: "em 40 min": marca o próximo compromisso (borda verde + contagem). */
+  destaque?: string;
 }) {
   const tipo = tipoDe(cat, c.tipo);
   const cancelado = c.status === "cancelado";
@@ -63,7 +66,7 @@ export default function Cartao({
       style={estiloCor(tipo.cor)}
       className={`group flex w-full cursor-pointer items-stretch gap-3 rounded-[1.25rem] border border-linha bg-superficie p-1.5 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-tinta/20 active:scale-[0.985] ${
         cancelado || passou ? "border-dashed bg-transparent shadow-none" : ""
-      }`}
+      } ${destaque ? "border-tinta/25 ring-2 ring-lima" : ""}`}
     >
       <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-superficie-2 py-2">
         {c.dia_inteiro ? (
@@ -77,6 +80,7 @@ export default function Cartao({
       </div>
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-suave">
+          {destaque && <span className="mr-0.5 shrink-0 rounded-full bg-lima px-1.5 py-px text-[10px] font-extrabold text-escuro">{destaque}</span>}
           {[...new Set(tiposDe(cat, c).map((t) => t.cor))].map((cor) => (
             <span key={cor} className="size-2 shrink-0 rounded-full" style={{ background: corDe(cor).forte }} />
           ))}
