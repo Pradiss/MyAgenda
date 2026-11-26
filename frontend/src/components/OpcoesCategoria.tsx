@@ -27,8 +27,8 @@ export default function OpcoesCategoria({ valor, aoEscolher }: { valor: Categori
                 <span className="block text-lg leading-tight font-extrabold tracking-tight">{c.nome}</span>
                 <span className={`block text-sm font-semibold ${escolhida ? "text-white/60" : "text-suave"}`}>{c.descricao}</span>
                 <span className="mt-2 flex flex-wrap gap-1">
-                  {c.tipos
-                    .filter((t) => t.id !== "outro")
+                  {(c.ramos ?? c.tipos.filter((t) => t.id !== "outro"))
+                    .slice(0, 6)
                     .map((t) => (
                       <span
                         key={t.id}

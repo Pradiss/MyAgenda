@@ -6,6 +6,7 @@ import { tituloMes } from "./VisaoMes";
 import { api, consulta } from "@/lib/api";
 import type { Categoria } from "@/lib/categorias";
 import { corDe } from "@/lib/cores";
+import { custoEquipe, lucroDe } from "@/lib/compromissos";
 import { dinheiro, isoDoDia, primeiroDoMes, somarMeses, type Dia } from "@/lib/datas";
 import type { Compromisso } from "@/lib/tipos";
 
@@ -62,8 +63,17 @@ export default function Relatorio({ cat, diaInicial, aoFechar }: { cat: Categori
           <div className="grid grid-cols-2 gap-2">
             <Numero rotulo="Recebido" valor={dinheiro(soma(concluidos))} destaque />
             <Numero rotulo="A receber" valor={dinheiro(soma(pendentes))} />
-            <Numero rotulo={ativos.length === 1 ? "Compromisso" : "Compromissos"} valor={ativos.length} />
-            <Numero rotulo="Cancelados" valor={cancelados} />
+            {cat.equipe ? (
+              <>
+                <Numero rotulo="Equipe" valor={`− ${dinheiro(ativos.reduce((t, c) => t + custoEquipe(c), 0))}`} />
+                <Numero rotulo="Seu lucro" valor={dinheiro(ativos.reduce((t, c) => t + lucroDe(c), 0))} />
+              </>
+            ) : (
+              <>
+                <Numero rotulo={ativos.length === 1 ? "Compromisso" : "Compromissos"} valor={ativos.length} />
+                <Numero rotulo="Cancelados" valor={cancelados} />
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2">

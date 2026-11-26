@@ -10,6 +10,9 @@ export const ROTULO_STATUS: Record<Status, string> = {
   cancelado: "Cancelado",
 };
 
+/** Músico: alguém da equipe que precisa ser pago no compromisso. */
+export type Membro = { nome: string; valor: number; pago: boolean };
+
 export type Compromisso = {
   id: string;
   user_id: string;
@@ -25,6 +28,8 @@ export type Compromisso = {
   valor: number | null;
   status: Status;
   observacao: string | null;
+  /** Músico: equipe a pagar (ex.: 5 músicos). */
+  equipe: Membro[] | null;
   /** Compromissos repetidos compartilham o mesmo serie_id. */
   serie_id: string | null;
   criado_em: string;

@@ -27,6 +27,20 @@ const campos = {
   valor: z.number().min(0).max(99_999_999).nullish().transform((v) => v ?? null),
   status: z.enum(["marcado", "confirmado", "pago", "feito", "cancelado"]),
   observacao: z.string().trim().max(2000).nullish().transform((v) => v || null),
+  /** Músico: quem precisa ser pago neste compromisso. Lista vazia vira null. */
+  equipe: z
+    .array(
+      z
+        .object({
+          nome: z.string().trim().max(60).default(""),
+          valor: z.number().min(0).max(9_999_999),
+          pago: z.boolean().default(false),
+        })
+        .strict(),
+    )
+    .max(30, "No máximo 30 pessoas na equipe.")
+    .nullish()
+    .transform((v) => (v && v.length ? v : null)),
 };
 
 type Regras = { categoria?: keyof typeof CATEGORIAS; tipo?: string; status?: string; inicio?: string; fim?: string };

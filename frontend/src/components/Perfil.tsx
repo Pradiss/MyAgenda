@@ -4,15 +4,31 @@ import { LogOut, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OpcoesCategoria from "./OpcoesCategoria";
+import SeletorRamos from "./SeletorRamos";
 import { categoriaDe, type Categoria, type CategoriaId } from "@/lib/categorias";
-import { sair, salvarCategoria } from "@/lib/perfil";
+import { sair, salvarCategoria, salvarRamos } from "@/lib/perfil";
 
-export default function Perfil({ cat, email }: { cat: Categoria; email: string }) {
+export default function Perfil({ cat, email, ramos }: { cat: Categoria; email: string; ramos: string[] }) {
   const router = useRouter();
   const [trocandoPara, setTrocandoPara] = useState<CategoriaId | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const nova = trocandoPara ? categoriaDe(trocandoPara) : null;
+  const todosRamos = categoriaDe(cat.id)?.ramos;
+  const [meusRamos, setMeusRamos] = useState(ramos);
+  const ramosMudaram = [...meusRamos].sort().join() !== [...ramos].sort().join();
+
+  async function guardarRamos() {
+    setSalvando(true);
+    setErro("");
+    try {
+      await salvarRamos(meusRamos);
+      router.refresh();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+    setSalvando(false);
+  }
 
   async function confirmarTroca() {
     if (!trocandoPara) return;
@@ -41,6 +57,23 @@ export default function Perfil({ cat, email }: { cat: Categoria; email: string }
           </p>
         </div>
       </section>
+
+      {todosRamos && (
+        <section className="entrar">
+          <h2 className="mb-1 px-1 font-extrabold">Seus serviços</h2>
+          <p className="mb-3 px-1 text-sm text-suave">Só os serviços destes ramos aparecem na hora de marcar.</p>
+          <SeletorRamos ramos={todosRamos} selecionados={meusRamos} aoMudar={setMeusRamos} />
+          {ramosMudaram && (
+            <button
+              onClick={guardarRamos}
+              disabled={salvando || meusRamos.length === 0}
+              className="mt-3 w-full rounded-2xl bg-tinta py-3 font-extrabold text-white disabled:opacity-40"
+            >
+              {meusRamos.length === 0 ? "Escolha pelo menos um" : salvando ? "Salvando…" : "Salvar serviços"}
+            </button>
+          )}
+        </section>
+      )}
 
       <section className="entrar" style={{ animationDelay: "60ms" }}>
         <h2 className="mb-1 px-1 font-extrabold">Trocar de agenda</h2>

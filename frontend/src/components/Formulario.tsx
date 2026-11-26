@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Folha from "./Folha";
 import { ESTILO_STATUS } from "./Cartao";
-import { CATEGORIAS, tipoDe, type Categoria } from "@/lib/categorias";
+import { CATEGORIAS, ramoDoTipo, tipoDe, type Categoria, type Tipo } from "@/lib/categorias";
 import { estiloCor } from "@/lib/cores";
 import { faixaHorario } from "@/lib/compromissos";
+import { dinheiro } from "@/lib/datas";
 import { diaDe, formatar, hoje, hora, inicioDoDia, isoDoDia, paraISO, rotuloDia, somarDias, somarMeses, type Dia } from "@/lib/datas";
 import { api, consulta } from "@/lib/api";
 import { ROTULO_STATUS, type Compromisso, type Rascunho, type Status } from "@/lib/tipos";
@@ -83,6 +84,12 @@ export default function Formulario({
   const [valor, setValor] = useState(inicial.valor == null ? "" : Number(inicial.valor).toFixed(2).replace(".", ","));
   const [status, setStatus] = useState<Status>(inicial.status);
   const [observacao, setObservacao] = useState(inicial.observacao ?? "");
+  // Músico: equipe a pagar. Valores como texto enquanto digita ("150,00").
+  const [equipe, setEquipe] = useState(() =>
+    (inicial.equipe ?? []).map((m) => ({ nome: m.nome, valor: Number(m.valor).toFixed(2).replace(".", ","), pago: m.pago })),
+  );
+  const [qtdRapida, setQtdRapida] = useState("5");
+  const [valorRapido, setValorRapido] = useState("");
   const [repeticao, setRepeticao] = useState<Repeticao>("nao");
   const [vezes, setVezes] = useState(4);
   const [contatos, setContatos] = useState<Contato[]>([]);
@@ -134,6 +141,13 @@ export default function Formulario({
     const valorNum = cat.valor ? textoParaValor(valor) : null;
     if (Number.isNaN(valorNum)) return setErro("Valor inválido. Use só números, ex.: 150,00");
 
+    const equipeFinal = cat.equipe
+      ? equipe
+          .filter((m) => m.nome.trim() || m.valor.trim())
+          .map((m) => ({ nome: m.nome.trim(), valor: textoParaValor(m.valor) ?? 0, pago: m.pago }))
+      : [];
+    if (equipeFinal.some((m) => Number.isNaN(m.valor))) return setErro("Valor de algum músico está inválido. Ex.: 200,00");
+
     const inicio = diaInteiro ? isoDoDia(dia) : paraISO(dia, horaIni);
     const fim = diaInteiro ? isoDoDia(somarDias(dia, 1)) : paraISO(viraODia ? somarDias(dia, 1) : dia, horaFim);
 
@@ -150,6 +164,7 @@ export default function Formulario({
       valor: valorNum,
       status,
       observacao: observacao.trim() || null,
+      equipe: equipeFinal.length ? equipeFinal : null,
     };
 
     setSalvando(true);
@@ -187,6 +202,19 @@ export default function Formulario({
     aoSalvar();
   }
 
+  // Estética: ramo aberto na hora de escolher o serviço (o do compromisso, ou o primeiro da pessoa).
+  const [ramoAtivo, setRamoAtivo] = useState(() => ramoDoTipo(cat, inicial.tipo)?.id ?? cat.ramos?.[0]?.id);
+  const outro = cat.tipos.find((t) => t.id === "outro");
+  const opcoes: Tipo[] = cat.ramos
+    ? [...(cat.ramos.find((r) => r.id === ramoAtivo)?.servicos ?? []), ...(outro ? [outro] : [])]
+    : cat.tipos;
+
+  /** Escolher o serviço já ajusta o fim pela duração típica dele (só ao marcar, não ao editar). */
+  function escolherTipo(t: Tipo) {
+    setTipo(t.id);
+    if (!editando && t.duracao && !diaInteiro) mudarHorario(() => setHoraFim(deMin(paraMin(horaIni) + t.duracao!)));
+  }
+
   const temDetalhes = Boolean(cliente || telefone || local || observacao);
   const [detalhes, setDetalhes] = useState(editando && temDetalhes);
   const mini = "w-full rounded-xl border border-linha bg-fundo px-3 py-2.5 font-bold outline-none focus:border-tinta";
@@ -194,20 +222,44 @@ export default function Formulario({
   return (
     <Folha titulo={editando ? "Editar" : "Marcar"} aoFechar={aoFechar} estilo={estiloCor(tipoDe(cat, tipo).cor)}>
       <form onSubmit={salvar} className="flex flex-col gap-3.5 pt-1">
-        {/* Tipo: uma linha que rola para o lado */}
-        <div className="sem-barra -mx-5 flex gap-2 overflow-x-auto px-5">
-          {cat.tipos.map((t) => (
+        {/* Ramos da pessoa (Estética com mais de um ramo): uma linha que rola */}
+        {cat.ramos && cat.ramos.length > 1 && (
+          <div className="sem-barra -mx-5 -mb-1 flex gap-1.5 overflow-x-auto px-5">
+            {cat.ramos.map((r) => (
+              <button
+                type="button"
+                key={r.id}
+                onClick={() => setRamoAtivo(r.id)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-extrabold transition ${
+                  r.id === ramoAtivo ? "bg-lima text-escuro" : "bg-superficie-2 text-suave hover:text-tinta"
+                }`}
+              >
+                <span aria-hidden>{r.emoji}</span>
+                {r.nome}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Tipo / serviço */}
+        <div className={cat.ramos ? "flex flex-wrap gap-1.5" : "sem-barra -mx-5 flex gap-2 overflow-x-auto px-5"}>
+          {opcoes.map((t) => (
             <button
               type="button"
               key={t.id}
-              onClick={() => setTipo(t.id)}
+              onClick={() => escolherTipo(t)}
               style={estiloCor(t.cor)}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-extrabold transition active:scale-95 ${
-                t.id === tipo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"
-              }`}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border font-extrabold transition active:scale-95 ${
+                cat.ramos ? "px-3 py-1.5 text-[13px]" : "px-3.5 py-1.5 text-sm"
+              } ${t.id === tipo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"}`}
             >
-              <span className="size-2 rounded-full bg-(--c)" />
+              {!cat.ramos && <span className="size-2 rounded-full bg-(--c)" />}
               {t.nome}
+              {cat.ramos && t.duracao && (
+                <span className={`text-[11px] font-bold ${t.id === tipo ? "text-white/60" : "text-suave"}`}>
+                  {t.duracao >= 60 ? `${Math.floor(t.duracao / 60)}h${t.duracao % 60 ? t.duracao % 60 : ""}` : `${t.duracao}min`}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -291,6 +343,21 @@ export default function Formulario({
               className="min-w-0 flex-1 bg-transparent py-3 text-right text-lg font-extrabold outline-none"
             />
           </label>
+        )}
+
+        {/* Músico: equipe a pagar */}
+        {cat.equipe && (
+          <EditorEquipe
+            rotulo={cat.equipe.rotulo}
+            item={cat.equipe.item}
+            equipe={equipe}
+            setEquipe={setEquipe}
+            cache={textoParaValor(valor)}
+            qtdRapida={qtdRapida}
+            setQtdRapida={setQtdRapida}
+            valorRapido={valorRapido}
+            setValorRapido={setValorRapido}
+          />
         )}
 
         {/* Mais detalhes (fechado por padrão: a tela fica limpa) */}
@@ -403,5 +470,133 @@ export default function Formulario({
         </div>
       </form>
     </Folha>
+  );
+}
+
+type LinhaEquipe = { nome: string; valor: string; pago: boolean };
+
+/** Lista de quem precisa ser pago (ex.: 5 músicos) + o lucro que sobra do cachê. */
+function EditorEquipe({
+  rotulo,
+  item,
+  equipe,
+  setEquipe,
+  cache,
+  qtdRapida,
+  setQtdRapida,
+  valorRapido,
+  setValorRapido,
+}: {
+  rotulo: string;
+  item: string;
+  equipe: LinhaEquipe[];
+  setEquipe: (e: LinhaEquipe[]) => void;
+  cache: number | null;
+  qtdRapida: string;
+  setQtdRapida: (v: string) => void;
+  valorRapido: string;
+  setValorRapido: (v: string) => void;
+}) {
+  const total = equipe.reduce((t, m) => t + (textoParaValor(m.valor) || 0), 0);
+  const lucro = (cache && !Number.isNaN(cache) ? cache : 0) - total;
+  const mudar = (i: number, campo: keyof LinhaEquipe, v: string | boolean) =>
+    setEquipe(equipe.map((m, j) => (j === i ? { ...m, [campo]: v } : m)));
+  const adicionarVarios = () => {
+    const n = Math.min(Math.max(parseInt(qtdRapida) || 0, 1), 20);
+    const inicio = equipe.length;
+    setEquipe([...equipe, ...Array.from({ length: n }, (_, k) => ({ nome: `${item} ${inicio + k + 1}`, valor: valorRapido, pago: false }))]);
+  };
+  const campo = "rounded-xl border border-linha bg-superficie px-2.5 py-2 text-sm font-bold outline-none focus:border-tinta";
+
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-linha bg-fundo p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-extrabold">
+          {rotulo}
+          {equipe.length > 0 && <span className="text-suave"> · {equipe.length}</span>}
+        </span>
+        {equipe.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setEquipe([...equipe, { nome: `${item} ${equipe.length + 1}`, valor: equipe.at(-1)?.valor ?? "", pago: false }])}
+            className="rounded-full bg-superficie-2 px-3 py-1 text-xs font-extrabold"
+          >
+            + {item}
+          </button>
+        )}
+      </div>
+
+      {equipe.map((m, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <input
+            aria-label={`Nome ou função do ${item.toLowerCase()} ${i + 1}`}
+            value={m.nome}
+            onChange={(e) => mudar(i, "nome", e.target.value)}
+            placeholder="Ex.: Baterista"
+            className={`${campo} min-w-0 flex-1`}
+          />
+          <label className={`${campo} flex w-28 shrink-0 items-center gap-1`}>
+            <span className="text-xs text-suave">R$</span>
+            <input
+              inputMode="decimal"
+              aria-label={`Valor do ${item.toLowerCase()} ${i + 1}`}
+              value={m.valor}
+              onChange={(e) => mudar(i, "valor", e.target.value)}
+              placeholder="0,00"
+              className="w-full min-w-0 bg-transparent text-right outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setEquipe(equipe.filter((_, j) => j !== i))}
+            aria-label="Remover"
+            className="grid size-9 shrink-0 place-items-center rounded-xl text-suave hover:bg-superficie-2 hover:text-coral"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+
+      {/* Atalho: vários de uma vez, com o mesmo valor */}
+      <div className="flex items-center gap-1.5 text-sm">
+        <span className="font-bold text-suave">{equipe.length ? "Mais" : "Pagar"}</span>
+        <input
+          inputMode="numeric"
+          aria-label="Quantos"
+          value={qtdRapida}
+          onChange={(e) => setQtdRapida(e.target.value.replace(/\D/g, "").slice(0, 2))}
+          className={`${campo} w-11 text-center`}
+        />
+        <span className="font-bold text-suave">de R$</span>
+        <input
+          inputMode="decimal"
+          aria-label="Valor de cada um"
+          value={valorRapido}
+          onChange={(e) => setValorRapido(e.target.value)}
+          placeholder="200"
+          className={`${campo} w-20 min-w-0 text-right`}
+        />
+        <button type="button" onClick={adicionarVarios} className="ml-auto shrink-0 rounded-xl bg-tinta px-3 py-2 text-xs font-extrabold text-white">
+          Adicionar
+        </button>
+      </div>
+
+      {(equipe.length > 0 || (cache ?? 0) > 0) && (
+        <div className="mt-1 grid grid-cols-3 gap-1 border-t border-linha pt-2 text-center">
+          <div>
+            <p className="text-[11px] font-bold text-suave">Cachê</p>
+            <p className="text-sm font-extrabold">{dinheiro(cache && !Number.isNaN(cache) ? cache : 0)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-suave">Equipe</p>
+            <p className="text-sm font-extrabold text-coral">− {dinheiro(total)}</p>
+          </div>
+          <div className="rounded-xl bg-lima py-0.5">
+            <p className="text-[11px] font-bold text-escuro/60">Seu lucro</p>
+            <p className="text-sm font-extrabold text-escuro">{dinheiro(lucro)}</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

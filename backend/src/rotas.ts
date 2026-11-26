@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { exigirLogin } from "./auth.js";
-import { paraJson, prisma } from "./db.js";
+import { paraBanco, paraJson, prisma } from "./db.js";
 import {
   consultaBusca,
   consultaCategoria,
@@ -132,7 +132,7 @@ rotas.post("/compromissos", async (req, res) => {
   if (!corpo.success) return res.status(400).json({ erro: mensagem(corpo.error) });
 
   const { ocorrencias, ...base } = corpo.data;
-  const dados = { ...base, user_id: req.usuarioId };
+  const dados = paraBanco({ ...base, user_id: req.usuarioId });
 
   if (!ocorrencias) {
     const criado = await prisma.compromisso.create({ data: dados });
@@ -165,7 +165,7 @@ rotas.patch("/compromissos/:id", async (req, res) => {
   });
   if (erros.length) return res.status(400).json({ erro: erros.join(" ") });
 
-  const salvo = await prisma.compromisso.update({ where: { id: atual.id }, data: corpo.data });
+  const salvo = await prisma.compromisso.update({ where: { id: atual.id }, data: paraBanco(corpo.data) });
   res.json(paraJson(salvo));
 });
 

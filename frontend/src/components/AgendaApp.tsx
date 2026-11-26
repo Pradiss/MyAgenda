@@ -14,10 +14,10 @@ import VisaoDia from "./VisaoDia";
 import VisaoMes from "./VisaoMes";
 import VisaoProximos from "./VisaoProximos";
 import { api, consulta, definirTokenInicial } from "@/lib/api";
-import { categoriaDe, estiloCategoria, type CategoriaId } from "@/lib/categorias";
+import { agendaDoUsuario, categoriaDe, estiloCategoria, type CategoriaId } from "@/lib/categorias";
 import { aReceber, doDia } from "@/lib/compromissos";
 import { dinheiro, emSP, formatar, gradeDoMes, hoje, inicioDoDia, isoDoDia, paraISO, rotuloDia, somarDias, somarMeses, type Dia } from "@/lib/datas";
-import type { Compromisso, Rascunho, Status } from "@/lib/tipos";
+import type { Compromisso, Membro, Rascunho, Status } from "@/lib/tipos";
 
 type Modo = "dia" | "mes";
 
@@ -29,14 +29,17 @@ const periodoDe = (d: Dia) => {
 
 export default function AgendaApp({
   categoria,
+  ramos = [],
   email,
   token,
 }: {
   categoria: CategoriaId;
+  /** Ramos escolhidos (Estética). Define quais serviços aparecem ao marcar. */
+  ramos?: string[];
   email: string;
   token?: { valor: string; expiraEm: number } | null;
 }) {
-  const cat = categoriaDe(categoria)!;
+  const cat = useMemo(() => agendaDoUsuario(categoriaDe(categoria)!, ramos), [categoria, ramos]);
   definirTokenInicial(token); // antes do primeiro carregamento
   const nome = useMemo(() => {
     const base = email.split("@")[0].split(/[._-]/)[0] || "você";
@@ -167,6 +170,18 @@ export default function AgendaApp({
     carregar();
   }
 
+  async function mudarEquipe(c: Compromisso, equipe: Membro[]) {
+    pedido.current++;
+    emTodas((l) => l.map((x) => (x.id === c.id ? { ...x, equipe } : x)));
+    setDetalhe((d) => (d?.id === c.id ? { ...d, equipe } : d));
+    try {
+      await api(`/compromissos/${c.id}`, { metodo: "PATCH", corpo: { equipe } });
+    } catch (e) {
+      setErro(`Não deu para salvar a equipe: ${(e as Error).message}`);
+    }
+    carregar();
+  }
+
   async function excluir(c: Compromisso, modoExclusao: "este" | "proximos") {
     const sai = (x: Compromisso) =>
       x.id === c.id ||
@@ -191,7 +206,7 @@ export default function AgendaApp({
       tipo: cat.tipos[0].id,
       titulo: "",
       inicio,
-      fim: new Date(Date.parse(inicio) + 60 * 60_000).toISOString(),
+      fim: new Date(Date.parse(inicio) + (cat.tipos[0].duracao ?? 60) * 60_000).toISOString(),
       dia_inteiro: false,
       cliente: null,
       telefone: null,
@@ -199,6 +214,7 @@ export default function AgendaApp({
       valor: null,
       status: "marcado",
       observacao: null,
+      equipe: null,
     });
   }
 
@@ -206,7 +222,7 @@ export default function AgendaApp({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, user_id, serie_id, criado_em, atualizado_em, ...resto } = c;
     setDetalhe(null);
-    setRascunho({ ...resto, status: "marcado" });
+    setRascunho({ ...resto, status: "marcado", equipe: resto.equipe?.map((m) => ({ ...m, pago: false })) ?? null });
   }
 
   function mudarAba(a: Aba) {
@@ -362,7 +378,7 @@ export default function AgendaApp({
                 <p className="text-xs font-semibold text-suave">conta e preferências</p>
                 <h1 className="text-2xl leading-tight font-extrabold tracking-tight">Perfil</h1>
               </header>
-              <Perfil cat={cat} email={email} />
+              <Perfil cat={cat} email={email} ramos={ramos} />
             </div>
           )}
         </div>
@@ -382,6 +398,7 @@ export default function AgendaApp({
           }}
           aoDuplicar={duplicar}
           aoExcluir={excluir}
+          aoMudarEquipe={mudarEquipe}
         />
       )}
 

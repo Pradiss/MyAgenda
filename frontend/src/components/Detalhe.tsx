@@ -6,10 +6,10 @@ import Folha from "./Folha";
 import { ESTILO_STATUS } from "./Cartao";
 import { tipoDe, type Categoria } from "@/lib/categorias";
 import { estiloCor } from "@/lib/cores";
-import { faixaHorario, linkWhatsApp } from "@/lib/compromissos";
+import { custoEquipe, faixaHorario, linkWhatsApp, lucroDe } from "@/lib/compromissos";
 import { diaDe, dinheiro, rotuloDia } from "@/lib/datas";
 import { baixarICS, linkGoogleAgenda } from "@/lib/lembrete";
-import { ROTULO_STATUS, type Compromisso, type Status } from "@/lib/tipos";
+import { ROTULO_STATUS, type Compromisso, type Membro, type Status } from "@/lib/tipos";
 
 const link = "underline decoration-lima decoration-[3px] underline-offset-2";
 
@@ -21,6 +21,7 @@ export default function Detalhe({
   aoEditar,
   aoDuplicar,
   aoExcluir,
+  aoMudarEquipe,
 }: {
   c: Compromisso;
   cat: Categoria;
@@ -29,6 +30,8 @@ export default function Detalhe({
   aoEditar: (c: Compromisso) => void;
   aoDuplicar: (c: Compromisso) => void;
   aoExcluir: (c: Compromisso, modo: "este" | "proximos") => void;
+  /** Músico: marcar quem da equipe já foi pago. */
+  aoMudarEquipe?: (c: Compromisso, equipe: Membro[]) => void;
 }) {
   const [perguntando, setPerguntando] = useState(false);
   const tipo = tipoDe(cat, c.tipo);
@@ -72,6 +75,52 @@ export default function Detalhe({
               </div>
             ))}
           </dl>
+        )}
+
+        {/* Músico: equipe a pagar */}
+        {c.equipe && c.equipe.length > 0 && (
+          <div className="rounded-2xl border border-linha p-3">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="font-extrabold">
+                {cat.equipe?.rotulo ?? "Equipe"} · {c.equipe.length}
+              </span>
+              <span className="text-xs font-bold text-suave">
+                {c.equipe.filter((m) => m.pago).length} de {c.equipe.length} pagos
+              </span>
+            </div>
+            <ul className="flex flex-col gap-1">
+              {c.equipe.map((m, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  <span className={`min-w-0 flex-1 truncate font-bold ${m.pago ? "text-suave line-through" : ""}`}>
+                    {m.nome || `${cat.equipe?.item ?? "Pessoa"} ${i + 1}`}
+                  </span>
+                  <span className="shrink-0 font-extrabold">{dinheiro(Number(m.valor))}</span>
+                  <button
+                    onClick={() => aoMudarEquipe?.(c, c.equipe!.map((x, j) => (j === i ? { ...x, pago: !x.pago } : x)))}
+                    className={`w-20 shrink-0 rounded-full py-1 text-[11px] font-extrabold transition active:scale-95 ${
+                      m.pago ? "bg-lima text-escuro" : "bg-superficie-2 text-suave"
+                    }`}
+                  >
+                    {m.pago ? "✓ Pago" : "A pagar"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2.5 grid grid-cols-3 gap-1 border-t border-linha pt-2 text-center">
+              <div>
+                <p className="text-[11px] font-bold text-suave">Cachê</p>
+                <p className="text-sm font-extrabold">{dinheiro(Number(c.valor ?? 0))}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-suave">Equipe</p>
+                <p className="text-sm font-extrabold text-coral">− {dinheiro(custoEquipe(c))}</p>
+              </div>
+              <div className="rounded-xl bg-lima py-0.5">
+                <p className="text-[11px] font-bold text-escuro/60">Seu lucro</p>
+                <p className="text-sm font-extrabold text-escuro">{dinheiro(lucroDe(c))}</p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Status: um toque */}

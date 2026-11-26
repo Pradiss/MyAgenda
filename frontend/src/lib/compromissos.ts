@@ -12,6 +12,12 @@ export function doDia(lista: Compromisso[], dia: Dia): Compromisso[] {
     .sort((a, b) => Number(b.dia_inteiro) - Number(a.dia_inteiro) || a.inicio.localeCompare(b.inicio));
 }
 
+/** Quanto sai para a equipe (músicos) neste compromisso. */
+export const custoEquipe = (c: Pick<Compromisso, "equipe">) => (c.equipe ?? []).reduce((t, m) => t + Number(m.valor || 0), 0);
+
+/** Cachê − equipe. */
+export const lucroDe = (c: Pick<Compromisso, "valor" | "equipe">) => Number(c.valor ?? 0) - custoEquipe(c);
+
 export function aReceber(lista: Compromisso[]): number {
   return lista
     .filter((c) => c.valor != null && c.status !== "pago" && c.status !== "cancelado")

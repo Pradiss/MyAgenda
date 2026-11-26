@@ -31,6 +31,8 @@ model Compromisso {
   /// marcado | confirmado | pago | feito | cancelado
   status        String   @default("marcado")
   observacao    String?
+  /// Músico: equipe a pagar [{ nome, valor, pago }]
+  equipe        Json?
   /// Compromissos repetidos compartilham o mesmo serie_id
   serie_id      String?  @db.Uuid
   criado_em     DateTime @default(now()) @db.Timestamptz(6)

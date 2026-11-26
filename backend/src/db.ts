@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient, type Compromisso } from "./generated/prisma/client.js";
+import { Prisma, PrismaClient, type Compromisso } from "./generated/prisma/client.js";
 import { config } from "./config.js";
 
 // `pgbouncer=true` era um parâmetro do Prisma antigo; o driver pg não usa.
@@ -17,6 +17,11 @@ if (ssl) url.searchParams.delete("sslmode");
 export const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: url.toString(), ssl, max: 5 }),
 });
+
+/** Para gravar: no Prisma, "sem equipe" num campo JSON precisa ser Prisma.DbNull (não null). */
+export function paraBanco<T extends { equipe?: unknown }>(dados: T) {
+  return { ...dados, ...(dados.equipe === null ? { equipe: Prisma.DbNull } : {}) } as T & { equipe?: Prisma.InputJsonValue | typeof Prisma.DbNull };
+}
 
 /** Formato que a API devolve: `valor` como número (o Prisma usa Decimal). */
 export const paraJson = (c: Compromisso) => ({ ...c, valor: c.valor == null ? null : Number(c.valor) });

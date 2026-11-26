@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Cartao from "./Cartao";
 import { tipoDe, type Categoria } from "@/lib/categorias";
 import { corDe } from "@/lib/cores";
-import { doDia, linkWhatsApp } from "@/lib/compromissos";
+import { doDia, linkWhatsApp, lucroDe } from "@/lib/compromissos";
 import { diaDe, diasDaSemana, dinheiro, formatar, hoje, hora, inicioDoDia, rotuloDia } from "@/lib/datas";
 import type { Compromisso, Status } from "@/lib/tipos";
 
@@ -78,9 +78,11 @@ export default function Inicio({
   const numeros = [
     { rotulo: "Hoje", valor: String(deHoje.length) },
     { rotulo: "Semana", valor: String(naSemana) },
-    cat.valor
-      ? { rotulo: "Confirmados", valor: proximos.length ? `${Math.round((confirmados / proximos.length) * 100)}%` : "—" }
-      : { rotulo: "Pendentes", valor: String(pendentes.length) },
+    cat.equipe
+      ? { rotulo: "Lucro no mês", valor: dinheiro(ativosMes.reduce((t, c) => t + lucroDe(c), 0)) }
+      : cat.valor
+        ? { rotulo: "Confirmados", valor: proximos.length ? `${Math.round((confirmados / proximos.length) * 100)}%` : "—" }
+        : { rotulo: "Pendentes", valor: String(pendentes.length) },
   ];
 
   const botaoIcone =
@@ -121,9 +123,9 @@ export default function Inicio({
           </p>
           <div className="mt-4 grid grid-cols-3 divide-x divide-white/10 border-t border-white/10 pt-3">
             {numeros.map((n) => (
-              <div key={n.rotulo} className="px-2 first:pl-0">
+              <div key={n.rotulo} className="min-w-0 px-2 first:pl-0">
                 <p className="text-[11px] font-bold text-white/60">{n.rotulo}</p>
-                <p className="text-lg leading-tight font-extrabold">{n.valor}</p>
+                <p className="truncate text-lg leading-tight font-extrabold">{n.valor}</p>
               </div>
             ))}
           </div>

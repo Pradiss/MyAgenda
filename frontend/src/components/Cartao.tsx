@@ -3,6 +3,7 @@
 import { Check, MapPin, Repeat, UserRound } from "lucide-react";
 import { tipoDe, type Categoria } from "@/lib/categorias";
 import { estiloCor } from "@/lib/cores";
+import { lucroDe } from "@/lib/compromissos";
 import { dinheiro, hora } from "@/lib/datas";
 import { ROTULO_STATUS, type Compromisso, type Status } from "@/lib/tipos";
 
@@ -90,7 +91,14 @@ export default function Cartao({
       </div>
       <div className="flex flex-col items-end justify-between gap-1 py-0.5 pr-1">
         <EtiquetaStatus status={c.status} cat={cat} aoMudar={(s) => aoMudarStatus(c, s)} />
-        {c.valor != null && <span className="text-xs font-extrabold">{dinheiro(Number(c.valor))}</span>}
+        {c.valor != null && (
+          <span className="text-right text-xs leading-tight font-extrabold">
+            {dinheiro(Number(c.valor))}
+            {c.equipe && c.equipe.length > 0 && (
+              <span className="block text-[10px] font-bold text-ok">lucro {dinheiro(lucroDe(c))}</span>
+            )}
+          </span>
+        )}
       </div>
     </div>
   );

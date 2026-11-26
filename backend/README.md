@@ -26,6 +26,8 @@ npm run build && npm start   # produção (é o que o Render roda)
 | PATCH | `/compromissos/:id` | Edita só os campos enviados (a categoria não muda) |
 | DELETE | `/compromissos/:id` | Exclui. Com `?serie=proximos`, exclui também as próximas vezes da repetição |
 
+Campo `equipe` (Músico): `[{ "nome": "Baterista", "valor": 200, "pago": false }]` (até 30; lista vazia = `null`).
+
 Datas em ISO 8601 com fuso, ex.: `2026-11-28T23:00:00.000Z`.
 Erros voltam como `{ "erro": "mensagem em português" }`, com status 400 (dados inválidos), 401 (sem login), 404 ou 500.
 

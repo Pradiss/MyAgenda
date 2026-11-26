@@ -147,6 +147,12 @@ Configuração: `backend/.env` e `frontend/.env.local` (modelos em `.env.example
 
 ## Mudar as agendas
 
+**Músico: cachê, equipe e lucro.** Em cada show dá para registrar a equipe a pagar (ex.: 5 músicos, cada um com o seu valor; o atalho "Pagar 5 de R$ 200" preenche tudo). O app mostra **cachê − equipe = seu lucro** no formulário, no detalhe (onde se marca quem já foi pago), no Início ("Lucro no mês") e no resumo do mês. Tipos do Músico: Show, Casamento, Evento corporativo, Festa particular, Ensaio, Aula, Gravação.
+
+**Estética: ramos e serviços.** Cada profissional escolhe os seus ramos (Cílios, Sobrancelhas, Unhas, Cabelo, Maquiagem, Estética facial, Depilação, Corporal, Micropigmentação, Podologia) no primeiro acesso ou em **Perfil → Seus serviços**; ao marcar, só aparecem os serviços desses ramos, e cada serviço já ajusta o horário de fim pela duração típica.
+A lista fica em `frontend/src/lib/ramosEstetica.ts` (nome, emoji, cor e `[id, nome, minutos]` de cada serviço). Mudar nome ou duração: só esse arquivo. Criar ou trocar o **id** de um serviço: atualize também a lista `estetica.tipos` em `backend/src/categorias.ts` (os ids são `<ramo>_<serviço>`).
+
+
 Os tipos, cores, campos e mensagens do WhatsApp de cada agenda ficam em `frontend/src/lib/categorias.ts`. Se criar ou renomear um **tipo**, atualize também `backend/src/categorias.ts` (o backend recusa tipos que não conhece). Para uma **agenda nova**, mude também o `check (categoria in (...))` no banco, com uma migração nova.
 
 ## Mudar o banco (Prisma)
