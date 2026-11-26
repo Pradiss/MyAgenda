@@ -5,10 +5,23 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import OpcoesCategoria from "./OpcoesCategoria";
 import SeletorRamos from "./SeletorRamos";
+import SeletorTema from "./SeletorTema";
 import { categoriaDe, type Categoria, type CategoriaId } from "@/lib/categorias";
-import { sair, salvarCategoria, salvarRamos } from "@/lib/perfil";
+import { sair, salvarCategoria, salvarRamos, salvarTema } from "@/lib/perfil";
 
-export default function Perfil({ cat, email, ramos }: { cat: Categoria; email: string; ramos: string[] }) {
+export default function Perfil({
+  cat,
+  email,
+  ramos,
+  tema,
+  aoMudarTema,
+}: {
+  cat: Categoria;
+  email: string;
+  ramos: string[];
+  tema: string;
+  aoMudarTema: (id: string) => void;
+}) {
   const router = useRouter();
   const [trocandoPara, setTrocandoPara] = useState<CategoriaId | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -56,6 +69,19 @@ export default function Perfil({ cat, email, ramos }: { cat: Categoria; email: s
             Agenda: {cat.emoji} {cat.nome}
           </p>
         </div>
+      </section>
+
+      <section className="entrar">
+        <h2 className="mb-1 px-1 font-extrabold">Cores do app</h2>
+        <p className="mb-3 px-1 text-sm text-suave">Muda na hora e fica salvo na sua conta.</p>
+        <SeletorTema
+          valor={tema}
+          aoEscolher={(id) => {
+            aoMudarTema(id); // aplica já
+            salvarTema(id).catch((e) => setErro((e as Error).message));
+          }}
+        />
+        {erro && <p className="mt-2 text-sm font-bold text-coral">{erro}</p>}
       </section>
 
       {todosRamos && (

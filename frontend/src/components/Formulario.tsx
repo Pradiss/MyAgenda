@@ -519,8 +519,8 @@ export default function Formulario({
         )}
 
         <datalist id="contatos">
-          {contatos.map((c) => (
-            <option key={c.nome} value={c.nome} />
+          {contatos.map((c, i) => (
+            <option key={`${c.nome}-${i}`} value={c.nome} />
           ))}
         </datalist>
 

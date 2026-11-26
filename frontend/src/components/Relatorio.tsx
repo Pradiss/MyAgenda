@@ -97,7 +97,7 @@ export default function Relatorio({ cat, diaInicial, aoFechar }: { cat: Categori
                     {cat.valor && <span className="text-suave">{dinheiro(t.valor)}</span>}
                   </div>
                   <div className="h-3 overflow-hidden rounded-full bg-superficie-2">
-                    <div className="h-full rounded-full" style={{ width: `${(t.qtd / maior) * 100}%`, background: i === 0 ? "#d4f55a" : "#111111" }} />
+                    <div className="h-full rounded-full" style={{ width: `${(t.qtd / maior) * 100}%`, background: i === 0 ? "var(--color-lima)" : "var(--color-tinta)" }} />
                   </div>
                 </div>
               ))}

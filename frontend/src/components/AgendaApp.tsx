@@ -15,6 +15,7 @@ import VisaoAno from "./VisaoAno";
 import VisaoMes from "./VisaoMes";
 import VisaoProximos from "./VisaoProximos";
 import { api, consulta, definirTokenInicial } from "@/lib/api";
+import { aplicarTemaNaPagina, estiloTema, temaDe } from "@/lib/temas";
 import { agendaDoUsuario, categoriaDe, estiloCategoria, type CategoriaId } from "@/lib/categorias";
 import { aReceber, doDia } from "@/lib/compromissos";
 import { dinheiro, emSP, formatar, gradeDoMes, hoje, inicioDoDia, isoDoDia, paraISO, rotuloDia, somarDias, somarMeses, type Dia } from "@/lib/datas";
@@ -34,12 +35,15 @@ const periodoDe = (d: Dia) => {
 export default function AgendaApp({
   categoria,
   ramos = [],
+  tema: temaInicial,
   email,
   token,
 }: {
   categoria: CategoriaId;
   /** Ramos escolhidos (Estética). Define quais serviços aparecem ao marcar. */
   ramos?: string[];
+  /** Tema de cores salvo na conta. */
+  tema?: string;
   email: string;
   token?: { valor: string; expiraEm: number } | null;
 }) {
@@ -51,6 +55,8 @@ export default function AgendaApp({
   }, [email]);
 
   const [aba, setAba] = useState<Aba>("inicio");
+  const [tema, setTema] = useState(() => temaDe(temaInicial));
+  useEffect(() => aplicarTemaNaPagina(tema), [tema]);
   const [modo, setModo] = useState<Modo>("dia");
   const [dia, setDia] = useState<Dia>(hoje);
   const [periodo, setPeriodo] = useState<Compromisso[]>([]); // calendário do mês do dia escolhido
@@ -297,7 +303,7 @@ export default function AgendaApp({
   // ─── Tela ───────────────────────────────────────────────────────────────
 
   return (
-    <div style={estiloCategoria(cat)} className="brilho min-h-dvh">
+    <div style={{ ...estiloCategoria(cat), ...estiloTema(tema) }} className="brilho min-h-dvh">
       <div
         className="mx-auto max-w-xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-28"
         // Na agenda, a pinça é do app (zoom dia/mês/ano), não do navegador.
@@ -452,7 +458,7 @@ export default function AgendaApp({
                 <p className="text-xs font-semibold text-suave">conta e preferências</p>
                 <h1 className="text-2xl leading-tight font-extrabold tracking-tight">Perfil</h1>
               </header>
-              <Perfil cat={cat} email={email} ramos={ramos} />
+              <Perfil cat={cat} email={email} ramos={ramos} tema={tema.id} aoMudarTema={(id) => setTema(temaDe(id))} />
             </div>
           )}
         </div>

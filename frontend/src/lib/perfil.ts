@@ -13,6 +13,11 @@ export async function salvarRamos(ramos: string[]) {
   await salvarNaConta({ ramos });
 }
 
+/** Guarda o tema de cores escolhido. */
+export async function salvarTema(tema: string) {
+  await salvarNaConta({ tema });
+}
+
 async function salvarNaConta(dados: Record<string, unknown>) {
   const { criarClienteNavegador } = await import("./supabase/client");
   const supabase = criarClienteNavegador();

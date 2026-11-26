@@ -12,6 +12,7 @@ export default async function Inicio() {
       key={`${sessao.cat.id}-${sessao.ramos.join(",")}`}
       categoria={sessao.cat.id}
       ramos={sessao.ramos}
+      tema={sessao.tema}
       email={sessao.email}
       token={sessao.token}
     />

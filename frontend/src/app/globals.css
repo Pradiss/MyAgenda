@@ -45,7 +45,7 @@ textarea {
 }
 
 ::selection {
-  background: #d4f55a;
+  background: var(--color-lima);
 }
 
 /* Botão/realce principal: preto sólido */
