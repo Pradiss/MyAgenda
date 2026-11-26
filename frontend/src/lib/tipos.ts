@@ -28,6 +28,8 @@ export type Compromisso = {
   valor: number | null;
   status: Status;
   observacao: string | null;
+  /** Estética: todos os serviços do horário (o primeiro também está em `tipo`). Vazio = só o `tipo`. */
+  servicos: string[];
   /** Músico: equipe a pagar (ex.: 5 músicos). */
   equipe: Membro[] | null;
   /** Compromissos repetidos compartilham o mesmo serie_id. */

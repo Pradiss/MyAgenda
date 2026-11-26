@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Cartao from "./Cartao";
 import { tipoDe, type Categoria } from "@/lib/categorias";
 import { corDe } from "@/lib/cores";
-import { doDia, linkWhatsApp, lucroDe } from "@/lib/compromissos";
+import { doDia, linkWhatsApp, lucroDe, nomeServicos } from "@/lib/compromissos";
 import { diaDe, diasDaSemana, dinheiro, formatar, hoje, hora, inicioDoDia, rotuloDia } from "@/lib/datas";
 import type { Compromisso, Status } from "@/lib/tipos";
 
@@ -149,7 +149,7 @@ export default function Inicio({
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 truncate text-[11px] font-bold text-suave">
               <span className="size-2 shrink-0 rounded-full" style={{ background: corDe(tipoProximo.cor).forte }} />
-              Próximo · {tipoProximo.nome}
+              <span className="truncate">Próximo · {nomeServicos(cat, proximo, 2)}</span>
               {diaDe(proximo.inicio) !== h && ` · ${rotuloDia(diaDe(proximo.inicio), "EEE, d/MM")}`}
             </p>
             <p className="truncate text-[15px] font-extrabold tracking-tight">{proximo.titulo}</p>

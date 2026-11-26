@@ -2,8 +2,8 @@
 
 import { Check, MapPin, Repeat, UserRound } from "lucide-react";
 import { tipoDe, type Categoria } from "@/lib/categorias";
-import { estiloCor } from "@/lib/cores";
-import { lucroDe } from "@/lib/compromissos";
+import { corDe, estiloCor } from "@/lib/cores";
+import { lucroDe, nomeServicos, tiposDe } from "@/lib/compromissos";
 import { dinheiro, hora } from "@/lib/datas";
 import { ROTULO_STATUS, type Compromisso, type Status } from "@/lib/tipos";
 
@@ -76,9 +76,11 @@ export default function Cartao({
         )}
       </div>
       <div className="min-w-0 flex-1 py-0.5">
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-suave">
-          <span className="size-2 rounded-full bg-(--c)" />
-          {tipo.nome}
+        <div className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-suave">
+          {[...new Set(tiposDe(cat, c).map((t) => t.cor))].map((cor) => (
+            <span key={cor} className="size-2 shrink-0 rounded-full" style={{ background: corDe(cor).forte }} />
+          ))}
+          <span className="ml-0.5 truncate">{nomeServicos(cat, c, 2)}</span>
           {c.serie_id && <Repeat size={11} />}
         </div>
         <div className={`truncate text-[15px] leading-snug font-extrabold tracking-tight ${cancelado ? "line-through" : ""}`}>{c.titulo}</div>

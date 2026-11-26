@@ -27,6 +27,8 @@ const campos = {
   valor: z.number().min(0).max(99_999_999).nullish().transform((v) => v ?? null),
   status: z.enum(["marcado", "confirmado", "pago", "feito", "cancelado"]),
   observacao: z.string().trim().max(2000).nullish().transform((v) => v || null),
+  /** Vários serviços no mesmo horário (Estética). O primeiro vira o `tipo`. */
+  servicos: z.array(z.string().max(40)).max(10, "No máximo 10 serviços por horário.").optional(),
   /** Músico: quem precisa ser pago neste compromisso. Lista vazia vira null. */
   equipe: z
     .array(
@@ -43,7 +45,21 @@ const campos = {
     .transform((v) => (v && v.length ? v : null)),
 };
 
-type Regras = { categoria?: keyof typeof CATEGORIAS; tipo?: string; status?: string; inicio?: string; fim?: string };
+type Regras = {
+  categoria?: keyof typeof CATEGORIAS;
+  tipo?: string;
+  servicos?: string[];
+  status?: string;
+  inicio?: string;
+  fim?: string;
+};
+
+/** Junta `tipo` e `servicos`: sem duplicados, e o `tipo` passa a ser o primeiro serviço. */
+export function normalizarServicos<T extends { tipo?: string; servicos?: string[] }>(d: T): T {
+  if (!d.servicos) return d;
+  const servicos = [...new Set(d.servicos)];
+  return servicos.length ? { ...d, servicos, tipo: servicos[0] } : { ...d, servicos };
+}
 
 /** Regras que dependem de mais de um campo. Devolve a lista de problemas (vazia = tudo certo). */
 export function problemas(d: Regras): string[] {
@@ -51,6 +67,7 @@ export function problemas(d: Regras): string[] {
   if (d.categoria) {
     const cat = CATEGORIAS[d.categoria];
     if (d.tipo !== undefined && !(cat.tipos as readonly string[]).includes(d.tipo)) lista.push("Tipo não existe nesta agenda.");
+    if (d.servicos?.some((s) => !(cat.tipos as readonly string[]).includes(s))) lista.push("Algum serviço não existe nesta agenda.");
     if (d.status !== undefined && !(cat.status as readonly string[]).includes(d.status)) lista.push("Status não existe nesta agenda.");
   }
   if (d.inicio && d.fim && Date.parse(d.fim) <= Date.parse(d.inicio)) lista.push("O fim precisa ser depois do início.");
@@ -69,6 +86,7 @@ export const novoCompromisso = z
     ocorrencias: z.array(ocorrencia).min(2).max(60, "Dá para repetir no máximo 60 vezes.").optional(),
   })
   .strict()
+  .transform(normalizarServicos)
   .superRefine((d, ctx) => {
     const lista = [d, ...(d.ocorrencias ?? []).map((o) => ({ ...d, ...o }))];
     new Set(lista.flatMap(problemas)).forEach((message) => ctx.addIssue({ code: "custom", message }));

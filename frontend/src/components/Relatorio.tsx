@@ -6,7 +6,7 @@ import { tituloMes } from "./VisaoMes";
 import { api, consulta } from "@/lib/api";
 import type { Categoria } from "@/lib/categorias";
 import { corDe } from "@/lib/cores";
-import { custoEquipe, lucroDe } from "@/lib/compromissos";
+import { custoEquipe, lucroDe, servicosDe } from "@/lib/compromissos";
 import { dinheiro, isoDoDia, primeiroDoMes, somarMeses, type Dia } from "@/lib/datas";
 import type { Compromisso } from "@/lib/tipos";
 
@@ -35,7 +35,7 @@ export default function Relatorio({ cat, diaInicial, aoFechar }: { cat: Categori
   const cancelados = (lista?.length ?? 0) - ativos.length;
   const porTipo = cat.tipos
     .map((t) => {
-      const itens = ativos.filter((c) => c.tipo === t.id);
+      const itens = ativos.filter((c) => servicosDe(c).includes(t.id)); // horário com 3 serviços conta nos 3
       return { ...t, qtd: itens.length, valor: soma(itens) };
     })
     .filter((t) => t.qtd > 0);

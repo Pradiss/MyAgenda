@@ -31,6 +31,8 @@ model Compromisso {
   /// marcado | confirmado | pago | feito | cancelado
   status        String   @default("marcado")
   observacao    String?
+  /// Estética: todos os serviços do horário (o primeiro também fica em `tipo`)
+  servicos      String[] @default([])
   /// Músico: equipe a pagar [{ nome, valor, pago }]
   equipe        Json?
   /// Compromissos repetidos compartilham o mesmo serie_id

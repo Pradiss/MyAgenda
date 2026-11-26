@@ -1,4 +1,5 @@
-import { tipoDe, type Categoria } from "./categorias";
+import type { Categoria } from "./categorias";
+import { nomeServicos } from "./compromissos";
 import type { Compromisso } from "./tipos";
 
 const utc = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -6,7 +7,7 @@ const utc = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").re
 
 function descricao(c: Compromisso, cat: Categoria) {
   return [
-    `${cat.emoji} ${cat.nome} · ${tipoDe(cat, c.tipo).nome}`,
+    `${cat.emoji} ${cat.nome} · ${nomeServicos(cat, c)}`,
     c.cliente && `${cat.cliente ?? "Contato"}: ${c.cliente}`,
     c.telefone && `WhatsApp: ${c.telefone}`,
     c.observacao,

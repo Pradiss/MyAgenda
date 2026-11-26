@@ -149,6 +149,10 @@ Configuração: `backend/.env` e `frontend/.env.local` (modelos em `.env.example
 
 **Músico: cachê, equipe e lucro.** Em cada show dá para registrar a equipe a pagar (ex.: 5 músicos, cada um com o seu valor; o atalho "Pagar 5 de R$ 200" preenche tudo). O app mostra **cachê − equipe = seu lucro** no formulário, no detalhe (onde se marca quem já foi pago), no Início ("Lucro no mês") e no resumo do mês. Tipos do Músico: Show, Casamento, Evento corporativo, Festa particular, Ensaio, Aula, Gravação.
 
+**Vários serviços no mesmo horário (Estética).** Ao marcar, toque em quantos serviços quiser, de ramos diferentes (ex.: Volume russo + Design com henna + Manicure para a mesma cliente). A duração soma sozinha e vira um compromisso só.
+
+**Zoom na Agenda (como no iPhone).** Junte os dedos para afastar (**Dia → Mês → Ano**) e abra para aproximar. O **Ano** mostra os 12 meses numa tela, com os dias que têm agendamento destacados; toque num mês para abrir. Também há os botões Dia · Mês · Ano.
+
 **Estética: ramos e serviços.** Cada profissional escolhe os seus ramos (Cílios, Sobrancelhas, Unhas, Cabelo, Maquiagem, Estética facial, Depilação, Corporal, Micropigmentação, Podologia) no primeiro acesso ou em **Perfil → Seus serviços**; ao marcar, só aparecem os serviços desses ramos, e cada serviço já ajusta o horário de fim pela duração típica.
 A lista fica em `frontend/src/lib/ramosEstetica.ts` (nome, emoji, cor e `[id, nome, minutos]` de cada serviço). Mudar nome ou duração: só esse arquivo. Criar ou trocar o **id** de um serviço: atualize também a lista `estetica.tipos` em `backend/src/categorias.ts` (os ids são `<ramo>_<serviço>`).
 

@@ -44,6 +44,9 @@ function diasDaRepeticao(dia: Dia, rep: Repeticao, vezes: number): Dia[] {
 
 type Contato = { nome: string; telefone: string | null };
 
+/** 150 -> "2h30", 45 -> "45min". */
+const duracaoTexto = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}` : `${m}min`);
+
 const paraMin = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
 const deMin = (m: number) => {
   const t = ((m % 1440) + 1440) % 1440;
@@ -140,6 +143,7 @@ export default function Formulario({
 
     const valorNum = cat.valor ? textoParaValor(valor) : null;
     if (Number.isNaN(valorNum)) return setErro("Valor inválido. Use só números, ex.: 150,00");
+    if (cat.ramos && servicos.length === 0) return setErro("Escolha pelo menos um serviço.");
 
     const equipeFinal = cat.equipe
       ? equipe
@@ -153,7 +157,8 @@ export default function Formulario({
 
     const dados = {
       categoria: cat.id,
-      tipo,
+      tipo: cat.ramos ? servicos[0] : tipo,
+      ...(cat.ramos ? { servicos } : {}),
       titulo: titulo.trim(),
       inicio,
       fim,
@@ -209,10 +214,26 @@ export default function Formulario({
     ? [...(cat.ramos.find((r) => r.id === ramoAtivo)?.servicos ?? []), ...(outro ? [outro] : [])]
     : cat.tipos;
 
-  /** Escolher o serviço já ajusta o fim pela duração típica dele (só ao marcar, não ao editar). */
+  /** Escolher o tipo já ajusta o fim pela duração típica dele (só ao marcar, não ao editar). */
   function escolherTipo(t: Tipo) {
     setTipo(t.id);
     if (!editando && t.duracao && !diaInteiro) mudarHorario(() => setHoraFim(deMin(paraMin(horaIni) + t.duracao!)));
+  }
+
+  // Estética: vários serviços no mesmo horário (cílios + sobrancelha + unha para a mesma cliente).
+  const [servicos, setServicos] = useState<string[]>(() =>
+    inicial.servicos?.length ? inicial.servicos : editando ? [inicial.tipo] : [],
+  );
+  const escolhidos = servicos.map((id) => tipoDe(cat, id));
+  const duracaoTotal = escolhidos.reduce((t, x) => t + (x.duracao ?? 0), 0);
+
+  /** Liga/desliga um serviço; o fim passa a ser início + soma das durações. */
+  function alternarServico(t: Tipo) {
+    const nova = servicos.includes(t.id) ? servicos.filter((x) => x !== t.id) : [...servicos, t.id];
+    setServicos(nova);
+    if (nova.length) setTipo(nova[0]);
+    const total = nova.reduce((soma, id) => soma + (tipoDe(cat, id).duracao ?? 0), 0);
+    if (total && !diaInteiro) mudarHorario(() => setHoraFim(deMin(paraMin(horaIni) + total)));
   }
 
   const temDetalhes = Boolean(cliente || telefone || local || observacao);
@@ -222,47 +243,93 @@ export default function Formulario({
   return (
     <Folha titulo={editando ? "Editar" : "Marcar"} aoFechar={aoFechar} estilo={estiloCor(tipoDe(cat, tipo).cor)}>
       <form onSubmit={salvar} className="flex flex-col gap-3.5 pt-1">
-        {/* Ramos da pessoa (Estética com mais de um ramo): uma linha que rola */}
-        {cat.ramos && cat.ramos.length > 1 && (
-          <div className="sem-barra -mx-5 -mb-1 flex gap-1.5 overflow-x-auto px-5">
-            {cat.ramos.map((r) => (
+        {cat.ramos ? (
+          <div className="flex flex-col gap-2">
+            {/* Selecionados: tocar tira */}
+            {escolhidos.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {escolhidos.map((t) => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => alternarServico(t)}
+                    style={estiloCor(t.cor)}
+                    className="entrar flex items-center gap-1.5 rounded-full bg-lima py-1 pr-2 pl-2.5 text-[13px] font-extrabold text-escuro"
+                  >
+                    <span className="size-2 rounded-full bg-(--c)" />
+                    {t.nome}
+                    <span aria-label="tirar" className="text-escuro/50">×</span>
+                  </button>
+                ))}
+                {duracaoTotal > 0 && <span className="text-xs font-bold text-suave">= {duracaoTexto(duracaoTotal)}</span>}
+              </div>
+            )}
+
+            {/* Ramos da pessoa: a bolinha conta quantos já foram escolhidos */}
+            {cat.ramos.length > 1 && (
+              <div className="sem-barra -mx-5 flex gap-1.5 overflow-x-auto px-5">
+                {cat.ramos.map((r) => {
+                  const n = r.servicos.filter((x) => servicos.includes(x.id)).length;
+                  return (
+                    <button
+                      type="button"
+                      key={r.id}
+                      onClick={() => setRamoAtivo(r.id)}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-extrabold transition ${
+                        r.id === ramoAtivo ? "bg-tinta text-white" : "bg-superficie-2 text-suave hover:text-tinta"
+                      }`}
+                    >
+                      <span aria-hidden>{r.emoji}</span>
+                      {r.nome}
+                      {n > 0 && <span className="grid size-5 place-items-center rounded-full bg-lima text-[11px] text-escuro">{n}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Serviços do ramo aberto: toque para marcar vários */}
+            <div className="flex flex-wrap gap-1.5">
+              {opcoes.map((t) => {
+                const ativo = servicos.includes(t.id);
+                return (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => alternarServico(t)}
+                    aria-pressed={ativo}
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-extrabold transition active:scale-95 ${
+                      ativo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"
+                    }`}
+                  >
+                    {ativo && <span className="text-lima">✓</span>}
+                    {t.nome}
+                    {t.duracao && (
+                      <span className={`text-[11px] font-bold ${ativo ? "text-white/60" : "text-suave"}`}>{duracaoTexto(t.duracao)}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="sem-barra -mx-5 flex gap-2 overflow-x-auto px-5">
+            {opcoes.map((t) => (
               <button
                 type="button"
-                key={r.id}
-                onClick={() => setRamoAtivo(r.id)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-extrabold transition ${
-                  r.id === ramoAtivo ? "bg-lima text-escuro" : "bg-superficie-2 text-suave hover:text-tinta"
+                key={t.id}
+                onClick={() => escolherTipo(t)}
+                style={estiloCor(t.cor)}
+                className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-extrabold transition active:scale-95 ${
+                  t.id === tipo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"
                 }`}
               >
-                <span aria-hidden>{r.emoji}</span>
-                {r.nome}
+                <span className="size-2 rounded-full bg-(--c)" />
+                {t.nome}
               </button>
             ))}
           </div>
         )}
-
-        {/* Tipo / serviço */}
-        <div className={cat.ramos ? "flex flex-wrap gap-1.5" : "sem-barra -mx-5 flex gap-2 overflow-x-auto px-5"}>
-          {opcoes.map((t) => (
-            <button
-              type="button"
-              key={t.id}
-              onClick={() => escolherTipo(t)}
-              style={estiloCor(t.cor)}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border font-extrabold transition active:scale-95 ${
-                cat.ramos ? "px-3 py-1.5 text-[13px]" : "px-3.5 py-1.5 text-sm"
-              } ${t.id === tipo ? "border-tinta bg-tinta text-white" : "border-linha bg-fundo text-tinta"}`}
-            >
-              {!cat.ramos && <span className="size-2 rounded-full bg-(--c)" />}
-              {t.nome}
-              {cat.ramos && t.duracao && (
-                <span className={`text-[11px] font-bold ${t.id === tipo ? "text-white/60" : "text-suave"}`}>
-                  {t.duracao >= 60 ? `${Math.floor(t.duracao / 60)}h${t.duracao % 60 ? t.duracao % 60 : ""}` : `${t.duracao}min`}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
 
         <input
           id="titulo"

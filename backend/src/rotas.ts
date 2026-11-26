@@ -13,6 +13,7 @@ import {
   idValido,
   mensagem,
   novoCompromisso,
+  normalizarServicos,
   problemas,
 } from "./validacao.js";
 
@@ -150,8 +151,9 @@ rotas.post("/compromissos", async (req, res) => {
 rotas.patch("/compromissos/:id", async (req, res) => {
   const id = idValido.safeParse(req.params.id);
   if (!id.success) return res.status(404).json({ erro: "Compromisso não encontrado." });
-  const corpo = edicaoCompromisso.safeParse(req.body);
-  if (!corpo.success) return res.status(400).json({ erro: mensagem(corpo.error) });
+  const parse = edicaoCompromisso.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ erro: mensagem(parse.error) });
+  const corpo = { data: normalizarServicos(parse.data) };
 
   const atual = await prisma.compromisso.findFirst({ where: { id: id.data, user_id: req.usuarioId } });
   if (!atual) return res.status(404).json({ erro: "Compromisso não encontrado." });
@@ -159,6 +161,7 @@ rotas.patch("/compromissos/:id", async (req, res) => {
   const erros = problemas({
     categoria: atual.categoria as "trabalho" | "musico" | "estetica",
     tipo: corpo.data.tipo ?? atual.tipo,
+    servicos: corpo.data.servicos,
     status: corpo.data.status ?? atual.status,
     inicio: corpo.data.inicio ?? atual.inicio.toISOString(),
     fim: corpo.data.fim ?? atual.fim.toISOString(),

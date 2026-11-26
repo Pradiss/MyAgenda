@@ -5,8 +5,8 @@ import { useState } from "react";
 import Folha from "./Folha";
 import { ESTILO_STATUS } from "./Cartao";
 import { tipoDe, type Categoria } from "@/lib/categorias";
-import { estiloCor } from "@/lib/cores";
-import { custoEquipe, faixaHorario, linkWhatsApp, lucroDe } from "@/lib/compromissos";
+import { corDe, estiloCor } from "@/lib/cores";
+import { custoEquipe, faixaHorario, linkWhatsApp, lucroDe, tiposDe } from "@/lib/compromissos";
 import { diaDe, dinheiro, rotuloDia } from "@/lib/datas";
 import { baixarICS, linkGoogleAgenda } from "@/lib/lembrete";
 import { ROTULO_STATUS, type Compromisso, type Membro, type Status } from "@/lib/tipos";
@@ -56,9 +56,13 @@ export default function Detalhe({
         {/* Quando */}
         <div className="flex items-center justify-between gap-3 rounded-2xl bg-tinta px-4 py-3 text-white">
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold text-white/60">
-              <span className="size-2 rounded-full bg-(--c)" />
-              {tipo.nome}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-bold text-white/70">
+              {tiposDe(cat, c).map((t) => (
+                <span key={t.id} className="flex items-center gap-1">
+                  <span className="size-2 rounded-full" style={{ background: corDe(t.cor).forte }} />
+                  {t.nome}
+                </span>
+              ))}
               {c.serie_id && <Repeat size={11} />}
             </p>
             <p className="truncate font-extrabold">{rotuloDia(diaDe(c.inicio))}</p>

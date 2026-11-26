@@ -11,6 +11,7 @@ import Inicio from "./Inicio";
 import Perfil from "./Perfil";
 import Relatorio from "./Relatorio";
 import VisaoDia from "./VisaoDia";
+import VisaoAno from "./VisaoAno";
 import VisaoMes from "./VisaoMes";
 import VisaoProximos from "./VisaoProximos";
 import { api, consulta, definirTokenInicial } from "@/lib/api";
@@ -19,7 +20,10 @@ import { aReceber, doDia } from "@/lib/compromissos";
 import { dinheiro, emSP, formatar, gradeDoMes, hoje, inicioDoDia, isoDoDia, paraISO, rotuloDia, somarDias, somarMeses, type Dia } from "@/lib/datas";
 import type { Compromisso, Membro, Rascunho, Status } from "@/lib/tipos";
 
-type Modo = "dia" | "mes";
+type Modo = "dia" | "mes" | "ano";
+/** Níveis de zoom, do mais perto ao mais longe (pinça muda de um para o outro). */
+const ZOOM: Modo[] = ["dia", "mes", "ano"];
+const ROTULO_MODO: Record<Modo, string> = { dia: "Dia", mes: "Mês", ano: "Ano" };
 
 /** Período do calendário do mês (6 semanas) que contém o dia. */
 const periodoDe = (d: Dia) => {
@@ -62,7 +66,9 @@ export default function AgendaApp({
 
   // ─── Dados ──────────────────────────────────────────────────────────────
 
-  const { de, ate } = periodoDe(dia);
+  // Ano: carrega o ano todo; dia e mês: as 6 semanas do calendário do mês.
+  const { de, ate } =
+    modo === "ano" ? { de: `${dia.slice(0, 4)}-01-01`, ate: `${Number(dia.slice(0, 4)) + 1}-01-01` } : periodoDe(dia);
   const pedido = useRef(0);
 
   const carregar = useCallback(async () => {
@@ -215,6 +221,7 @@ export default function AgendaApp({
       status: "marcado",
       observacao: null,
       equipe: null,
+      servicos: [],
     });
   }
 
@@ -225,22 +232,63 @@ export default function AgendaApp({
     setRascunho({ ...resto, status: "marcado", equipe: resto.equipe?.map((m) => ({ ...m, pago: false })) ?? null });
   }
 
+  // iOS Safari ignora touch-action para pinça; bloqueia o "gesture" dele só na aba Agenda.
+  useEffect(() => {
+    if (aba !== "agenda") return;
+    const bloquear = (e: Event) => e.preventDefault();
+    document.addEventListener("gesturestart", bloquear);
+    document.addEventListener("gesturechange", bloquear);
+    return () => {
+      document.removeEventListener("gesturestart", bloquear);
+      document.removeEventListener("gesturechange", bloquear);
+    };
+  }, [aba]);
+
   function mudarAba(a: Aba) {
     setAba(a);
     window.scrollTo({ top: 0 });
   }
 
-  // Deslizar para os lados troca de dia (ou de mês) na aba Agenda.
+  // Na aba Agenda:
+  // - deslizar para os lados troca de dia / mês / ano;
+  // - pinça (dois dedos) muda o zoom como no iPhone: juntar = afastar (dia → mês → ano), abrir = aproximar.
   const toque = useRef<{ x: number; y: number } | null>(null);
-  const aoTocar = (e: React.TouchEvent) => (toque.current = { x: e.touches[0].clientX, y: e.touches[0].clientY });
+  const pinca = useRef<{ inicio: number; atual: number } | null>(null);
+  const distancia = (t: React.TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+  function zoom(direcao: 1 | -1) {
+    const i = ZOOM.indexOf(modo) + direcao;
+    if (i >= 0 && i < ZOOM.length) setModo(ZOOM[i]);
+  }
+
+  const aoTocar = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const d = distancia(e.touches);
+      pinca.current = { inicio: d, atual: d };
+      toque.current = null;
+      return;
+    }
+    if (!pinca.current) toque.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const aoMover = (e: React.TouchEvent) => {
+    if (pinca.current && e.touches.length === 2) pinca.current.atual = distancia(e.touches);
+  };
   const aoSoltar = (e: React.TouchEvent) => {
+    if (pinca.current) {
+      if (e.touches.length > 0) return; // ainda tem dedo na tela
+      const razao = pinca.current.atual / pinca.current.inicio;
+      pinca.current = null;
+      if (aba === "agenda" && razao < 0.8) zoom(1);
+      if (aba === "agenda" && razao > 1.25) zoom(-1);
+      return;
+    }
     if (!toque.current || aba !== "agenda") return;
     const dx = e.changedTouches[0].clientX - toque.current.x;
     const dy = e.changedTouches[0].clientY - toque.current.y;
     toque.current = null;
     if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       const n = dx < 0 ? 1 : -1;
-      setDia((d) => (modo === "mes" ? somarMeses(d, n) : somarDias(d, n)));
+      setDia((d) => (modo === "ano" ? somarMeses(d, 12 * n) : modo === "mes" ? somarMeses(d, n) : somarDias(d, n)));
     }
   };
 
@@ -250,7 +298,14 @@ export default function AgendaApp({
 
   return (
     <div style={estiloCategoria(cat)} className="brilho min-h-dvh">
-      <div className="mx-auto max-w-xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-28" onTouchStart={aoTocar} onTouchEnd={aoSoltar}>
+      <div
+        className="mx-auto max-w-xl px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-28"
+        // Na agenda, a pinça é do app (zoom dia/mês/ano), não do navegador.
+        style={aba === "agenda" ? { touchAction: "pan-x pan-y" } : undefined}
+        onTouchStart={aoTocar}
+        onTouchMove={aoMover}
+        onTouchEnd={aoSoltar}
+      >
         {erro && (
           <button
             onClick={() => {
@@ -284,19 +339,23 @@ export default function AgendaApp({
               <header className="flex items-end justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-suave first-letter:uppercase">
-                    {modo === "dia" ? formatar(inicioDoDia(dia), "d 'de' MMMM 'de' yyyy") : `${dia.slice(0, 4)} · toque num dia`}
+                    {modo === "dia"
+                      ? formatar(inicioDoDia(dia), "d 'de' MMMM 'de' yyyy")
+                      : modo === "mes"
+                        ? `${dia.slice(0, 4)} · junte os dedos para ver o ano`
+                        : "toque num mês para abrir"}
                   </p>
                   <h1 className="truncate text-2xl leading-tight font-extrabold tracking-tight first-letter:uppercase">
-                    {modo === "dia" ? rotuloDia(dia, "EEEE") : formatar(inicioDoDia(dia), "MMMM")}
+                    {modo === "dia" ? rotuloDia(dia, "EEEE") : modo === "mes" ? formatar(inicioDoDia(dia), "MMMM") : dia.slice(0, 4)}
                   </h1>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {modo === "mes" && (
+                  {modo !== "dia" && (
                     <>
-                      <button onClick={() => setDia(somarMeses(dia, -1))} aria-label="Mês anterior" className={botaoRedondo}>
+                      <button onClick={() => setDia(somarMeses(dia, modo === "ano" ? -12 : -1))} aria-label="Anterior" className={botaoRedondo}>
                         <ChevronLeft size={18} />
                       </button>
-                      <button onClick={() => setDia(somarMeses(dia, 1))} aria-label="Próximo mês" className={botaoRedondo}>
+                      <button onClick={() => setDia(somarMeses(dia, modo === "ano" ? 12 : 1))} aria-label="Próximo" className={botaoRedondo}>
                         <ChevronRight size={18} />
                       </button>
                     </>
@@ -308,14 +367,14 @@ export default function AgendaApp({
               </header>
 
               <div className="entrar flex items-center gap-2" style={{ animationDelay: "40ms" }}>
-                <div className="grid flex-1 grid-cols-2 rounded-full border border-linha bg-superficie p-0.5">
-                  {(["dia", "mes"] as Modo[]).map((m) => (
+                <div className="grid flex-1 grid-cols-3 rounded-full border border-linha bg-superficie p-0.5">
+                  {ZOOM.map((m) => (
                     <button
                       key={m}
                       onClick={() => setModo(m)}
                       className={`rounded-full py-1.5 text-sm font-extrabold transition ${modo === m ? "bg-tinta text-white" : "text-suave hover:text-tinta"}`}
                     >
-                      {m === "dia" ? "Dia" : "Mês"}
+                      {ROTULO_MODO[m]}
                     </button>
                   ))}
                 </div>
@@ -351,8 +410,23 @@ export default function AgendaApp({
                 </>
               )}
 
+              {modo === "ano" && (
+                <div key="ano" className="zoom-entrar">
+                  <VisaoAno
+                    dia={dia}
+                    compromissos={periodo}
+                    aoEscolherMes={(d) => {
+                      setDia(d);
+                      setModo("mes");
+                    }}
+                  />
+                </div>
+              )}
+
               {modo === "mes" && (
-                <VisaoMes dia={dia} cat={cat} compromissos={periodo} aoEscolher={setDia} aoAbrir={setDetalhe} aoNovo={novo} aoMudarStatus={mudarStatus} />
+                <div key="mes" className="zoom-entrar">
+                  <VisaoMes dia={dia} cat={cat} compromissos={periodo} aoEscolher={setDia} aoAbrir={setDetalhe} aoNovo={novo} aoMudarStatus={mudarStatus} />
+                </div>
               )}
             </div>
           )}
