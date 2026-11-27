@@ -6,7 +6,7 @@ import BarraNavegacao, { type Aba } from "./BarraNavegacao";
 import Busca from "./Busca";
 import Detalhe from "./Detalhe";
 import FaixaSemana from "./FaixaSemana";
-import Formulario from "./Formulario";
+import Formulario, { type Envio } from "./Formulario";
 import Inicio from "./Inicio";
 import Perfil from "./Perfil";
 import Relatorio from "./Relatorio";
@@ -22,6 +22,7 @@ import { dinheiro, emSP, formatar, gradeDoMes, hoje, inicioDoDia, isoDoDia, para
 import type { Compromisso, Membro, Rascunho, Status } from "@/lib/tipos";
 
 type Modo = "dia" | "mes" | "ano";
+const porInicio = (a: Compromisso, b: Compromisso) => Date.parse(a.inicio) - Date.parse(b.inicio);
 /** Níveis de zoom, do mais perto ao mais longe (pinça muda de um para o outro). */
 const ZOOM: Modo[] = ["dia", "mes", "ano"];
 const ROTULO_MODO: Record<Modo, string> = { dia: "Dia", mes: "Mês", ano: "Ano" };
@@ -67,6 +68,7 @@ export default function AgendaApp({
 
   const [detalhe, setDetalhe] = useState<Compromisso | null>(null);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
+  const [erroForm, setErroForm] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [relatorio, setRelatorio] = useState(false);
 
@@ -76,6 +78,19 @@ export default function AgendaApp({
   const { de, ate } =
     modo === "ano" ? { de: `${dia.slice(0, 4)}-01-01`, ate: `${Number(dia.slice(0, 4)) + 1}-01-01` } : periodoDe(dia);
   const pedido = useRef(0);
+
+  // Mudanças feitas aqui que o servidor ainda não confirmou (null = excluído).
+  // São reaplicadas sobre qualquer recarga, para a tela nunca "voltar atrás" enquanto salva.
+  const pendentes = useRef(new Map<string, Compromisso | null>());
+  const aplicarPendentes = useCallback((l: Compromisso[], soFuturos = false) => {
+    if (!pendentes.current.size) return l;
+    const porId = new Map(l.map((c) => [c.id, c]));
+    for (const [id, c] of pendentes.current) {
+      if (c === null || (soFuturos && (c.status === "cancelado" || Date.parse(c.fim) <= Date.now()))) porId.delete(id);
+      else porId.set(id, c);
+    }
+    return [...porId.values()].sort(porInicio);
+  }, []);
 
   const carregar = useCallback(async () => {
     const meu = ++pedido.current;
@@ -90,15 +105,15 @@ export default function AgendaApp({
         api<Compromisso[]>(`/compromissos/proximos${consulta({ categoria })}`),
       ]);
       if (meu !== pedido.current) return; // chegou uma resposta mais nova
-      setPeriodo(p);
-      setMesAtual(m ?? p);
-      setProximos(prox);
+      setPeriodo(aplicarPendentes(p));
+      setMesAtual(aplicarPendentes(m ?? p));
+      setProximos(aplicarPendentes(prox, true));
       setErro("");
     } catch (e) {
       if (meu === pedido.current) setErro(`Não deu para carregar: ${(e as Error).message}`);
     }
     if (meu === pedido.current) setCarregado(true);
-  }, [categoria, de, ate]);
+  }, [categoria, de, ate, aplicarPendentes]);
 
   useEffect(() => {
     carregar();
@@ -164,49 +179,111 @@ export default function AgendaApp({
 
   // ─── Ações ──────────────────────────────────────────────────────────────
 
-  function emTodas(fn: (l: Compromisso[]) => Compromisso[]) {
-    setPeriodo(fn);
-    setMesAtual(fn);
-    setProximos(fn);
+  /** Coloca (ou troca) compromissos nas listas da tela; `tirar` remove ids (ex.: os temporários). */
+  function colocar(itens: Compromisso[], tirar: string[] = []) {
+    const fora = new Set([...tirar, ...itens.map((c) => c.id)]);
+    const agora = Date.now();
+    const juntar = (l: Compromisso[], futuro = false) =>
+      [...l.filter((c) => !fora.has(c.id)), ...itens.filter((c) => !futuro || (c.status !== "cancelado" && Date.parse(c.fim) > agora))].sort(porInicio);
+    setPeriodo((l) => juntar(l));
+    setMesAtual((l) => juntar(l));
+    setProximos((l) => juntar(l, true));
+    setDetalhe((d) => (d ? itens.find((c) => c.id === d.id) ?? d : d));
   }
 
-  async function mudarStatus(c: Compromisso, status: Status) {
+  const temporario = (c: Compromisso) => c.id.startsWith("tmp-");
+  const abrir = (c: Compromisso) => !temporario(c) && setDetalhe(c);
+
+  /** Muda campos de um compromisso já salvo: aparece na hora, confirma em segundo plano. */
+  async function atualizar(c: Compromisso, mudanca: Partial<Compromisso>, rotuloErro: string) {
+    if (temporario(c)) return;
     pedido.current++; // descarta um carregamento antigo que chegaria depois
-    emTodas((l) => l.map((x) => (x.id === c.id ? { ...x, status } : x)));
-    setDetalhe((d) => (d?.id === c.id ? { ...d, status } : d));
+    const otimista = { ...c, ...mudanca };
+    pendentes.current.set(c.id, otimista);
+    colocar([otimista]);
     try {
-      await api(`/compromissos/${c.id}`, { metodo: "PATCH", corpo: { status } });
+      const salvo = await api<Compromisso>(`/compromissos/${c.id}`, { metodo: "PATCH", corpo: mudanca });
+      pendentes.current.delete(c.id);
+      colocar([salvo]);
     } catch (e) {
-      setErro(`Não deu para mudar o status: ${(e as Error).message}`);
+      pendentes.current.delete(c.id);
+      colocar([c]);
+      setErro(`${rotuloErro}: ${(e as Error).message}`);
     }
-    carregar();
   }
 
-  async function mudarEquipe(c: Compromisso, equipe: Membro[]) {
-    pedido.current++;
-    emTodas((l) => l.map((x) => (x.id === c.id ? { ...x, equipe } : x)));
-    setDetalhe((d) => (d?.id === c.id ? { ...d, equipe } : d));
-    try {
-      await api(`/compromissos/${c.id}`, { metodo: "PATCH", corpo: { equipe } });
-    } catch (e) {
-      setErro(`Não deu para salvar a equipe: ${(e as Error).message}`);
-    }
-    carregar();
-  }
+  const mudarStatus = (c: Compromisso, status: Status) => atualizar(c, { status }, "Não deu para mudar o status");
+  const mudarEquipe = (c: Compromisso, equipe: Membro[]) => atualizar(c, { equipe }, "Não deu para salvar a equipe");
 
   async function excluir(c: Compromisso, modoExclusao: "este" | "proximos") {
     const sai = (x: Compromisso) =>
       x.id === c.id ||
       (modoExclusao === "proximos" && c.serie_id != null && x.serie_id === c.serie_id && Date.parse(x.inicio) >= Date.parse(c.inicio));
+    const saindo = [...periodo, ...mesAtual, ...proximos].filter(sai).map((x) => x.id);
     pedido.current++;
     setDetalhe(null);
-    emTodas((l) => l.filter((x) => !sai(x)));
+    saindo.forEach((id) => pendentes.current.set(id, null));
+    colocar([], saindo);
     try {
       await api(`/compromissos/${c.id}${modoExclusao === "proximos" ? "?serie=proximos" : ""}`, { metodo: "DELETE" });
+      saindo.forEach((id) => pendentes.current.delete(id));
     } catch (e) {
+      saindo.forEach((id) => pendentes.current.delete(id));
       setErro(`Não deu para excluir: ${(e as Error).message}`);
+      carregar();
     }
-    carregar();
+  }
+
+  /**
+   * Salvar sem esperar: o formulário fecha e o compromisso aparece na hora ("salvando…").
+   * Se o servidor recusar, ele some e o formulário volta aberto com tudo preenchido.
+   */
+  async function salvarEnvio(envio: Envio) {
+    const deVolta: Rascunho = { ...envio.dados, id: envio.id };
+    setRascunho(null);
+    pedido.current++;
+
+    if (envio.id) {
+      const anterior = [...periodo, ...mesAtual, ...proximos].find((c) => c.id === envio.id);
+      if (!anterior) return;
+      const otimista = { ...anterior, ...envio.dados } as Compromisso;
+      pendentes.current.set(anterior.id, otimista);
+      colocar([otimista]);
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { categoria: _c, ...edicao } = envio.dados;
+        const salvo = await api<Compromisso>(`/compromissos/${anterior.id}`, { metodo: "PATCH", corpo: edicao });
+        pendentes.current.delete(anterior.id);
+        colocar([salvo]);
+      } catch (e) {
+        pendentes.current.delete(anterior.id);
+        colocar([anterior]);
+        setErroForm(`Não salvou: ${(e as Error).message}. Tente de novo.`);
+        setRascunho(deVolta);
+      }
+      return;
+    }
+
+    const agoraIso = new Date().toISOString();
+    const vezes = envio.ocorrencias ?? [{ inicio: envio.dados.inicio, fim: envio.dados.fim }];
+    const temporarios = vezes.map(
+      (o, i) =>
+        ({ ...envio.dados, ...o, id: `tmp-${Date.now()}-${i}`, user_id: "", serie_id: envio.ocorrencias ? "tmp" : null, criado_em: agoraIso, atualizado_em: agoraIso }) as Compromisso,
+    );
+    const idsTemp = temporarios.map((t) => t.id);
+    temporarios.forEach((t) => pendentes.current.set(t.id, t));
+    colocar(temporarios);
+    try {
+      const corpo = envio.ocorrencias ? { ...envio.dados, ocorrencias: envio.ocorrencias } : envio.dados;
+      const resposta = await api<Compromisso | Compromisso[]>("/compromissos", { metodo: "POST", corpo });
+      idsTemp.forEach((id) => pendentes.current.delete(id));
+      colocar(Array.isArray(resposta) ? resposta : [resposta], idsTemp);
+    } catch (e) {
+      idsTemp.forEach((id) => pendentes.current.delete(id));
+      colocar([], idsTemp);
+      setErroForm(`Não salvou: ${(e as Error).message}. Tente de novo.`);
+      setRascunho(deVolta);
+    }
   }
 
   function novo() {
@@ -332,7 +409,7 @@ export default function AgendaApp({
               mesAtual={mesAtual}
               proximos={proximos}
               carregado={carregado}
-              aoAbrir={setDetalhe}
+              aoAbrir={abrir}
               aoNovo={novo}
               aoMudarStatus={mudarStatus}
               aoBuscar={() => setBuscando(true)}
@@ -412,7 +489,7 @@ export default function AgendaApp({
                       )}
                     </div>
                   )}
-                  <VisaoDia dia={dia} cat={cat} compromissos={periodo} aoAbrir={setDetalhe} aoNovo={novo} aoMudarStatus={mudarStatus} />
+                  <VisaoDia dia={dia} cat={cat} compromissos={periodo} aoAbrir={abrir} aoNovo={novo} aoMudarStatus={mudarStatus} />
                 </>
               )}
 
@@ -431,7 +508,7 @@ export default function AgendaApp({
 
               {modo === "mes" && (
                 <div key="mes" className="zoom-entrar">
-                  <VisaoMes dia={dia} cat={cat} compromissos={periodo} aoEscolher={setDia} aoAbrir={setDetalhe} aoNovo={novo} aoMudarStatus={mudarStatus} />
+                  <VisaoMes dia={dia} cat={cat} compromissos={periodo} aoEscolher={setDia} aoAbrir={abrir} aoNovo={novo} aoMudarStatus={mudarStatus} />
                 </div>
               )}
             </div>
@@ -448,7 +525,7 @@ export default function AgendaApp({
                   <Search size={18} />
                 </button>
               </header>
-              <VisaoProximos cat={cat} compromissos={proximos} aoAbrir={setDetalhe} aoMudarStatus={mudarStatus} />
+              <VisaoProximos cat={cat} compromissos={proximos} aoAbrir={abrir} aoMudarStatus={mudarStatus} />
             </div>
           )}
 
@@ -488,7 +565,7 @@ export default function AgendaApp({
           aoFechar={() => setBuscando(false)}
           aoAbrir={(c) => {
             setBuscando(false);
-            setDetalhe(c);
+            abrir(c);
           }}
           aoMudarStatus={mudarStatus}
         />
@@ -498,12 +575,18 @@ export default function AgendaApp({
 
       {rascunho && (
         <Formulario
+          key={erroForm || "novo"}
           cat={cat}
           inicial={rascunho}
-          aoFechar={() => setRascunho(null)}
-          aoSalvar={() => {
+          erroInicial={erroForm}
+          existentes={[...new Map([...periodo, ...mesAtual, ...proximos].map((c) => [c.id, c])).values()]}
+          aoFechar={() => {
             setRascunho(null);
-            carregar();
+            setErroForm("");
+          }}
+          aoSalvar={(envio) => {
+            setErroForm("");
+            salvarEnvio(envio);
           }}
         />
       )}

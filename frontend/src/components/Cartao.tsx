@@ -96,7 +96,11 @@ export default function Cartao({
         )}
       </div>
       <div className="flex flex-col items-end justify-between gap-1 py-0.5 pr-1">
-        <EtiquetaStatus status={c.status} cat={cat} aoMudar={(s) => aoMudarStatus(c, s)} />
+        {c.id.startsWith("tmp-") ? (
+          <span className="animate-pulse rounded-full bg-superficie-2 px-2 py-0.5 text-[11px] font-bold text-suave">salvando…</span>
+        ) : (
+          <EtiquetaStatus status={c.status} cat={cat} aoMudar={(s) => aoMudarStatus(c, s)} />
+        )}
         {c.valor != null && (
           <span className="text-right text-xs leading-tight font-extrabold">
             {dinheiro(Number(c.valor))}

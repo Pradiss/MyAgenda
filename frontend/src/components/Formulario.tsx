@@ -63,16 +63,31 @@ function textoParaValor(t: string): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : NaN;
 }
 
+/** O que o formulário entrega para salvar (quem salva é a tela principal, sem travar o formulário). */
+export type Envio = {
+  /** Editando: id do compromisso. */
+  id?: string;
+  dados: Omit<Rascunho, "id">;
+  /** Repetição: início e fim de cada vez. */
+  ocorrencias?: { inicio: string; fim: string }[];
+};
+
 export default function Formulario({
   cat,
   inicial,
+  existentes,
+  erroInicial = "",
   aoFechar,
   aoSalvar,
 }: {
   cat: Categoria;
   inicial: Rascunho;
+  /** Compromissos já carregados: o aviso de conflito é conferido com eles, sem ir ao servidor. */
+  existentes: Compromisso[];
+  /** Quando o salvar falhou e o formulário voltou aberto: o motivo. */
+  erroInicial?: string;
   aoFechar: () => void;
-  aoSalvar: () => void;
+  aoSalvar: (envio: Envio) => void;
 }) {
   const editando = Boolean(inicial.id);
   const [tipo, setTipo] = useState(inicial.tipo);
@@ -110,7 +125,7 @@ export default function Formulario({
   }
 
   const [conflitos, setConflitos] = useState<Conflito[] | null>(null);
-  const [erro, setErro] = useState("");
+  const [erro, setErro] = useState(erroInicial);
   const [salvando, setSalvando] = useState(false);
 
   const h = hoje();
@@ -155,10 +170,10 @@ export default function Formulario({
     const inicio = diaInteiro ? isoDoDia(dia) : paraISO(dia, horaIni);
     const fim = diaInteiro ? isoDoDia(somarDias(dia, 1)) : paraISO(viraODia ? somarDias(dia, 1) : dia, horaFim);
 
-    const dados = {
+    const dados: Omit<Rascunho, "id"> = {
       categoria: cat.id,
       tipo: cat.ramos ? servicos[0] : tipo,
-      ...(cat.ramos ? { servicos } : {}),
+      servicos: cat.ramos ? servicos : [],
       titulo: titulo.trim(),
       inicio,
       fim,
@@ -172,39 +187,22 @@ export default function Formulario({
       equipe: equipeFinal.length ? equipeFinal : null,
     };
 
-    setSalvando(true);
-    try {
-      // Aviso de conflito (em qualquer uma das suas agendas). Na segunda vez, salva mesmo assim.
-      if (conflitos === null && !diaInteiro && status !== "cancelado") {
-        // Com repetição, procura no período todo e confere cada uma das vezes.
-        const vezesMarcadas = repeticao === "nao" || editando ? [{ inicio, fim }] : ocorrenciasDe();
-        const ultima = vezesMarcadas[vezesMarcadas.length - 1];
-        const encontrados = await api<Conflito[]>(
-          `/compromissos/conflitos${consulta({ inicio: vezesMarcadas[0].inicio, fim: ultima.fim, ignorar: inicial.id })}`,
-        );
-        const bate = (c: Conflito) =>
-          vezesMarcadas.some((v) => Date.parse(c.inicio) < Date.parse(v.fim) && Date.parse(c.fim) > Date.parse(v.inicio));
-        const lista = encontrados.filter(bate);
-        if (lista.length > 0) {
-          setConflitos(lista);
-          setSalvando(false);
-          return;
-        }
-      }
-      if (inicial.id) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { categoria, ...edicao } = dados;
-        await api(`/compromissos/${inicial.id}`, { metodo: "PATCH", corpo: edicao });
-      } else if (repeticao !== "nao") {
-        await api("/compromissos", { metodo: "POST", corpo: { ...dados, ocorrencias: ocorrenciasDe() } });
-      } else {
-        await api("/compromissos", { metodo: "POST", corpo: dados });
-      }
-    } catch (e) {
-      setSalvando(false);
-      return setErro(`Não deu para salvar: ${(e as Error).message}`);
+    // Aviso de conflito, conferido na hora com o que já está carregado. Na segunda vez, salva mesmo assim.
+    const repetir = repeticao !== "nao" && !editando;
+    if (conflitos === null && !diaInteiro && status !== "cancelado") {
+      const vezesMarcadas = repetir ? ocorrenciasDe() : [{ inicio, fim }];
+      const lista = existentes.filter(
+        (c) =>
+          c.id !== inicial.id &&
+          !c.dia_inteiro &&
+          c.status !== "cancelado" &&
+          vezesMarcadas.some((v) => Date.parse(c.inicio) < Date.parse(v.fim) && Date.parse(c.fim) > Date.parse(v.inicio)),
+      );
+      if (lista.length > 0) return setConflitos(lista);
     }
-    aoSalvar();
+
+    setSalvando(true);
+    aoSalvar({ id: inicial.id, dados, ocorrencias: repetir ? ocorrenciasDe() : undefined });
   }
 
   // Estética: ramo aberto na hora de escolher o serviço (o do compromisso, ou o primeiro da pessoa).
